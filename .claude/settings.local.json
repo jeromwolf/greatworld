@@ -11,7 +11,13 @@
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(git clone:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(python test:*)",
+      "Bash(python:*)"
     ],
     "deny": []
   }
