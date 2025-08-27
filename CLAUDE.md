@@ -63,18 +63,46 @@ greatWorld/
    - JWT 인증 사용
    - Rate limiting 적용
 
-## 현재 진행 상황
+## 현재 진행 상황 (2025-08-28)
 - [x] PRD 작성 완료
 - [x] BMC 작성 완료
 - [x] 개발 태스크 분해 완료
-- [ ] A2A 코드베이스 Fork
-- [ ] MVP 개발 시작
+- [x] A2A 코드베이스 Fork 및 정리 완료
+- [x] 프로젝트 구조 설정 완료
+- [x] Simple NLU Agent 구현 완료
+  - 자연어 쿼리 파싱 기능
+  - 의도 분류: analyze_stock, compare_stocks, get_sentiment, get_financials, get_news
+  - 엔티티 추출: 한국/미국 주식명, 티커, 기간
+  - 한글/영어 쿼리 지원
+  - 신뢰도 점수 계산
+- [ ] MVP 개발 진행 중
 
-## 다음 단계
-1. A2A 프로젝트(https://github.com/jeromwolf/A2A_sentiment_analysis) Fork
-2. StockAI용으로 코드 정리 및 수정
-3. DART/SEC API 연동 시작
-4. 기본 채팅 UI 구현
+## 완료된 파일
+- `agents/simple_nlu_agent.py`: 자연어 이해 에이전트 (독립 실행형)
+- `agents/nlu_agent.py`: A2A 기반 자연어 이해 에이전트 (추후 통합용)
+- `requirements.txt`: 프로젝트 의존성 정의
+- `.env.example`: 환경 변수 템플릿
+
+## 다음 단계 (2025-08-29 예정)
+1. **데이터 수집 에이전트 개발**
+   - DART Agent: 한국 공시 데이터 수집
+   - SEC Agent: 미국 공시 데이터 수집
+   - News Agent: 뉴스 데이터 수집
+   - Social Agent: SNS 데이터 수집 (Reddit, X)
+
+2. **Sentiment Analysis Agent 개발**
+   - Gemini AI 프롬프트 최적화
+   - 데이터 소스별 가중치 적용
+   - 감성 점수 계산 (-1.0 ~ 1.0)
+
+3. **기본 WebSocket 챗봇 UI 구현**
+   - FastAPI WebSocket 엔드포인트
+   - 간단한 HTML/JS 채팅 인터페이스
+
+## 개발 메모
+- A2A 코어 시스템은 `/a2a_core`에 위치
+- 현재는 Simple NLU Agent로 독립적으로 테스트 중
+- 추후 모든 에이전트를 A2A 시스템으로 통합 예정
 
 ## 테스트 및 검증 명령어
 ```bash
