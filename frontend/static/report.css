@@ -1,0 +1,468 @@
+/* 전문적인 투자 리포트 스타일 */
+:root {
+    --primary-color: #1E3A8A;
+    --success-color: #10B981;
+    --danger-color: #EF4444;
+    --neutral-color: #6B7280;
+    --bg-dark: #111827;
+    --bg-card: #1F2937;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --border-color: #374151;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* 검색 섹션 */
+.search-section {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 40px 0;
+}
+
+.logo {
+    font-size: 3rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 30px;
+}
+
+.search-box {
+    display: flex;
+    max-width: 600px;
+    margin: 0 auto;
+    gap: 10px;
+}
+
+.search-box input {
+    flex: 1;
+    padding: 15px 20px;
+    font-size: 1.1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    transition: all 0.3s;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.search-box button {
+    padding: 15px 40px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.search-box button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* 로딩 스피너 */
+.loading {
+    text-align: center;
+    padding: 100px 0;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--border-color);
+    border-top-color: #3B82F6;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* 분석 결과 */
+.results {
+    display: grid;
+    gap: 30px;
+}
+
+/* 리포트 헤더 */
+.report-header {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.header-info {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.data-source {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.data-source.high {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-color);
+}
+
+.data-source.mixed {
+    background: rgba(251, 191, 36, 0.2);
+    color: #FBBF24;
+}
+
+.data-source.low {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger-color);
+}
+
+/* 종합 평가 카드 */
+.summary-card {
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(31, 41, 55, 0.8) 100%);
+    padding: 40px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.sentiment-display {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin: 20px 0;
+}
+
+.sentiment-score {
+    font-size: 4rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.sentiment-score span:last-child {
+    background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.sentiment-label {
+    font-size: 1.5rem;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 30px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px solid rgba(59, 130, 246, 0.3);
+}
+
+.confidence {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 1.1rem;
+}
+
+.stars {
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+}
+
+/* 인사이트 카드 */
+.insights-card {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.insights-card h3 {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+.insights-card ul {
+    list-style: none;
+}
+
+.insights-card li {
+    padding: 10px 0;
+    padding-left: 30px;
+    position: relative;
+}
+
+.insights-card li:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #3B82F6;
+    font-size: 1.5rem;
+}
+
+/* 감성 분석 차트 */
+.sentiment-sources {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.sentiment-sources h3 {
+    margin-bottom: 30px;
+    font-size: 1.5rem;
+}
+
+.sentiment-chart-item {
+    margin-bottom: 30px;
+}
+
+.sentiment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.sentiment-header h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.sentiment-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.sentiment-value.positive {
+    color: var(--success-color);
+}
+
+.sentiment-value.negative {
+    color: var(--danger-color);
+}
+
+.sentiment-value.neutral {
+    color: var(--neutral-color);
+}
+
+.sentiment-bar {
+    height: 30px;
+    background: var(--bg-dark);
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+}
+
+.sentiment-bar-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+}
+
+.sentiment-bar-fill.positive {
+    background: linear-gradient(90deg, #10B981 0%, #34D399 100%);
+}
+
+.sentiment-bar-fill.negative {
+    background: linear-gradient(90deg, #EF4444 0%, #F87171 100%);
+}
+
+/* 뉴스 & 공시 섹션 */
+.news-disclosure-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+@media (max-width: 968px) {
+    .news-disclosure-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+.news-card, .disclosure-card {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.news-card h3, .disclosure-card h3 {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+.news-card ul, .disclosure-card ul {
+    list-style: none;
+}
+
+.news-card li, .disclosure-card li {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.news-card li:last-child, .disclosure-card li:last-child {
+    border-bottom: none;
+}
+
+/* 뉴스 카테고리 스타일 */
+.news-category {
+    margin-bottom: 20px;
+}
+
+.news-category h5 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.news-category.critical h5 {
+    color: #EF4444;
+}
+
+.news-category.important h5 {
+    color: #F59E0B;
+}
+
+.news-category.general h5 {
+    color: #6B7280;
+}
+
+.news-category ul {
+    list-style: none;
+}
+
+.news-category li {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+}
+
+.news-category.critical li {
+    border-left: 3px solid #EF4444;
+    padding-left: 15px;
+}
+
+.news-category.important li {
+    border-left: 3px solid #F59E0B;
+    padding-left: 15px;
+}
+
+.key-info {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 3px 8px;
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #60A5FA;
+    font-weight: 500;
+}
+
+#financialData {
+    background: rgba(59, 130, 246, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+#financialData:empty {
+    display: none;
+}
+
+#financialData p {
+    margin: 8px 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+/* AI 투자 의견 */
+.ai-opinion {
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(31, 41, 55, 0.8) 100%);
+    padding: 40px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.ai-opinion h3 {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+#aiRecommendation {
+    font-size: 1.1rem;
+    line-height: 1.8;
+}
+
+#aiRecommendation br {
+    margin-bottom: 0.5rem;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .search-section {
+        padding: 20px 0;
+    }
+    
+    .logo {
+        font-size: 2rem;
+    }
+    
+    .report-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .sentiment-score {
+        font-size: 3rem;
+    }
+}

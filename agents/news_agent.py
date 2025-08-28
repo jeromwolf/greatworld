@@ -29,8 +29,9 @@ class NewsArticle:
 class NewsAgent:
     """뉴스 데이터 수집 에이전트"""
     
-    def __init__(self, newsapi_key: Optional[str] = None):
+    def __init__(self, newsapi_key: Optional[str] = None, openai_key: Optional[str] = None):
         self.newsapi_key = newsapi_key or os.getenv("NEWSAPI_KEY", "")
+        self.openai_key = openai_key or os.getenv("OPENAI_API_KEY", "")
         self.newsapi_url = "https://newsapi.org/v2"
         self.session = None
         
@@ -148,15 +149,68 @@ class NewsAgent:
                                 company_name: str,
                                 days: int = 7) -> Dict[str, Any]:
         """
-        한국 기업 뉴스 검색
+        한국 기업 뉴스 검색 (구글 뉴스 RSS 사용)
         
         Args:
             company_name: 회사명
             days: 조회 기간 (일)
         """
-        # 네이버 뉴스 API 사용 (실제 구현 시)
-        # 여기서는 모의 데이터 반환
-        
+        try:
+            # 구글 뉴스 RSS를 사용하여 실제 뉴스 검색
+            import feedparser
+            from urllib.parse import quote
+            
+            # 한국 뉴스 검색 (구글 뉴스)
+            search_query = quote(f"{company_name} 주식")
+            google_news_url = f"https://news.google.com/rss/search?q={search_query}&hl=ko&gl=KR&ceid=KR:ko"
+            
+            feed = feedparser.parse(google_news_url)
+            
+            articles = []
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            for entry in feed.entries[:10]:  # 최대 10개
+                try:
+                    pub_date = datetime.fromisoformat(entry.published.replace('Z', '+00:00').replace(' GMT', '+00:00'))
+                except:
+                    pub_date = datetime.now()
+                
+                if pub_date >= cutoff_date:
+                    # 뉴스 제목에서 유용한 정보 추출
+                    title = entry.title
+                    summary = self._extract_key_info(title, company_name)
+                    
+                    articles.append({
+                        "title": title,
+                        "description": entry.summary if hasattr(entry, 'summary') else entry.title,
+                        "url": entry.link,
+                        "source": entry.source.href if hasattr(entry, 'source') else "Google News",
+                        "published_at": pub_date.isoformat(),
+                        "sentiment": None,
+                        "key_info": summary
+                    })
+            
+            if articles:
+                return {
+                    "status": "success",
+                    "company": company_name,
+                    "period_days": days,
+                    "count": len(articles),
+                    "articles": articles,
+                    "data_source": "REAL_DATA",
+                    "message": f"구글 뉴스에서 {len(articles)}개 기사 수집"
+                }
+            else:
+                # 실제 검색 결과가 없는 경우만 모의 데이터 반환
+                return self._get_korean_mock_news(company_name)
+                
+        except Exception as e:
+            print(f"Korean news search error: {str(e)}")
+            # 에러 시 모의 데이터 반환
+            return self._get_korean_mock_news(company_name)
+    
+    def _get_korean_mock_news(self, company_name: str) -> Dict[str, Any]:
+        """한국 뉴스 모의 데이터"""
         mock_articles = [
             {
                 "title": f"{company_name}, 3분기 실적 시장 예상 상회",
@@ -179,11 +233,11 @@ class NewsAgent:
         return {
             "status": "success",
             "company": company_name,
-            "period_days": days,
+            "period_days": 7,
             "count": len(mock_articles),
             "articles": mock_articles,
             "data_source": "MOCK_DATA",
-            "message": "⚠️ 모의 데이터 - 네이버 뉴스 API가 설정되지 않음"
+            "message": "⚠️ 모의 데이터 - 실제 뉴스 수집 실패"
         }
         
     async def search_financial_news(self,
@@ -327,6 +381,60 @@ class NewsAgent:
             total_weight += weight
             
         return total_score / total_weight if total_weight > 0 else 0.0
+    
+    def _extract_key_info(self, title: str, company_name: str) -> str:
+        """
+        뉴스 제목에서 핵심 정보 추출
+        
+        사용자에게 유용한 정보:
+        - 목표가 변경
+        - 실적 발표
+        - 주요 계약/파트너십
+        - 규제/정책 변화
+        - 경영진 변경
+        """
+        key_info = []
+        
+        # 목표가 관련
+        if "목표가" in title or "price target" in title.lower():
+            if "상향" in title or "raise" in title.lower() or "upgrade" in title.lower():
+                key_info.append("📈 목표가 상향")
+            elif "하향" in title or "lower" in title.lower() or "downgrade" in title.lower():
+                key_info.append("📉 목표가 하향")
+            else:
+                key_info.append("🎯 목표가 조정")
+                
+        # 실적 관련
+        if "실적" in title or "earnings" in title.lower() or "profit" in title.lower():
+            if "호조" in title or "상승" in title or "beat" in title.lower():
+                key_info.append("💰 실적 호조")
+            elif "부진" in title or "하락" in title or "miss" in title.lower():
+                key_info.append("⚠️ 실적 부진")
+                
+        # 주가 움직임
+        if any(keyword in title for keyword in ["급등", "급락", "상승", "하락", "surge", "plunge", "rise", "fall"]):
+            if any(keyword in title for keyword in ["급등", "상승", "surge", "rise"]):
+                key_info.append("📊 주가 상승")
+            else:
+                key_info.append("📉 주가 하락")
+                
+        # 사업/계약 관련
+        if any(keyword in title for keyword in ["계약", "수주", "파트너십", "인수", "합병", "contract", "partnership", "acquisition"]):
+            key_info.append("🤝 주요 계약/파트너십")
+            
+        # 기술/제품 관련
+        if any(keyword in title for keyword in ["신제품", "출시", "개발", "혁신", "launch", "develop", "innovation"]):
+            key_info.append("🚀 신제품/기술 개발")
+            
+        # 규제/정책
+        if any(keyword in title for keyword in ["규제", "정책", "법안", "제재", "regulation", "policy", "sanction"]):
+            key_info.append("⚖️ 규제/정책 이슈")
+            
+        # 배당/자사주
+        if any(keyword in title for keyword in ["배당", "자사주", "dividend", "buyback"]):
+            key_info.append("💵 주주환원 정책")
+        
+        return " | ".join(key_info) if key_info else ""
 
 
 # 테스트 함수

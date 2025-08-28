@@ -1,0 +1,175 @@
+"""
+전문적인 투자 리포트 포맷터
+깔끔하고 읽기 쉬운 형태로 데이터를 정리
+"""
+from datetime import datetime
+from typing import Dict, List
+
+class ProfessionalReportFormatter:
+    """투자 분석 리포트를 전문적으로 포맷팅하는 클래스"""
+    
+    @staticmethod
+    def format_sentiment_bar(score: float, length: int = 30) -> str:
+        """감성 점수를 시각적 바로 변환"""
+        if score > 0:
+            filled = int(score * length)
+            return "🟩" * filled + "⬜" * (length - filled)
+        elif score < 0:
+            filled = int(abs(score) * length)
+            return "🟥" * filled + "⬜" * (length - filled)
+        else:
+            return "⬜" * length
+    
+    @staticmethod
+    def format_report(company_name: str, sentiment_result, data_source_info: str, 
+                     news_data: Dict, dart_data: Dict, financial_data: str = None) -> str:
+        """전체 리포트 포맷팅"""
+        
+        # 데이터 신뢰도 계산
+        real_count = 0
+        mock_count = 0
+        for source_data in sentiment_result.data_sources.values():
+            if source_data.get('data_source') == 'REAL_DATA':
+                real_count += 1
+            else:
+                mock_count += 1
+        
+        reliability_text = "🟢 높음" if mock_count == 0 else "🟡 중간" if real_count > mock_count else "🔴 낮음"
+        
+        # 헤더
+        report = f"""
+================================================================================
+                    💹 {company_name} 투자 분석 리포트 💹
+================================================================================
+
+📊 데이터 신뢰도: {reliability_text} (실제 데이터 {real_count}개 / 전체 {real_count + mock_count}개)
+{data_source_info}
+
+--------------------------------------------------------------------------------
+📊 종합 평가
+--------------------------------------------------------------------------------
+▪️ 시장 감성: {sentiment_result.overall_sentiment:+.2f} ({sentiment_result.sentiment_label})
+▪️ 신뢰도: {'⭐' * min(5, int(sentiment_result.confidence * 5))} ({sentiment_result.confidence:.0%})
+▪️ 분석일시: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+"""
+        
+        # 핵심 인사이트
+        if sentiment_result.key_factors:
+            report += "💡 핵심 인사이트\n"
+            for factor in sentiment_result.key_factors:
+                report += f"  • {factor}\n"
+            report += "\n"
+        
+        # 뉴스 섹션 - 유용한 정보 강조
+        if news_data.get("articles"):
+            report += "--------------------------------------------------------------------------------\n"
+            report += f"📰 최근 뉴스 분석 ({len(news_data['articles'])}건)\n"
+            report += "--------------------------------------------------------------------------------\n"
+            
+            # 카테고리별로 뉴스 분류
+            categorized_news = ProfessionalReportFormatter._categorize_news(news_data["articles"])
+            
+            # 중요도 순으로 표시
+            if categorized_news["critical"]:
+                report += "\n🚨 **즉시 확인 필요**\n"
+                for article in categorized_news["critical"][:3]:
+                    report += f"  ▸ {article['title']}\n"
+                    if article.get('key_info'):
+                        report += f"    [{article['key_info']}]\n"
+            
+            if categorized_news["important"]:
+                report += "\n💡 **주요 뉴스**\n"
+                for article in categorized_news["important"][:5]:
+                    report += f"  ▸ {article['title']}\n"
+                    if article.get('key_info'):
+                        report += f"    [{article['key_info']}]\n"
+            
+            if categorized_news["general"]:
+                report += "\n📌 **일반 뉴스**\n"
+                for article in categorized_news["general"][:2]:
+                    report += f"  ▸ {article['title']}\n"
+            
+            report += "\n"
+        
+        # 공시 및 재무 데이터
+        if dart_data.get("disclosures"):
+            report += "--------------------------------------------------------------------------------\n"
+            report += f"📋 주요 공시 및 재무 현황\n"
+            report += "--------------------------------------------------------------------------------\n"
+            
+            # 재무 데이터가 있으면 표시
+            if financial_data:
+                report += financial_data + "\n"
+            
+            # 공시 목록
+            for disclosure in dart_data["disclosures"][:3]:
+                report += f"▫️ {disclosure['report_nm']} ({disclosure['rcept_dt']})\n"
+            report += "\n"
+        
+        # 감성 분포 차트
+        report += "--------------------------------------------------------------------------------\n"
+        report += "📊 데이터 소스별 감성 분석\n"
+        report += "--------------------------------------------------------------------------------\n"
+        
+        for source_name, source_data in sentiment_result.data_sources.items():
+            score = source_data.get('sentiment', 0.0)
+            count = source_data.get('count', 0)
+            bar = ProfessionalReportFormatter.format_sentiment_bar(score)
+            
+            report += f"\n{source_name.upper():<12} [{score:+.2f}] ({count}건)\n"
+            report += f"{bar}\n"
+        
+        # AI 의견
+        report += "\n--------------------------------------------------------------------------------\n"
+        report += "🤖 AI 투자 의견\n"
+        report += "--------------------------------------------------------------------------------\n"
+        report += sentiment_result.recommendation
+        report += "\n\n================================================================================\n"
+        
+        return report
+    
+    @staticmethod
+    def _categorize_news(articles: List[Dict]) -> Dict[str, List[Dict]]:
+        """
+        뉴스를 중요도별로 분류
+        
+        - critical: 즉시 확인이 필요한 뉴스 (실적 급변, 규제 이슈, 대규모 계약)
+        - important: 투자 판단에 중요한 뉴스 (목표가 변경, 신제품, 파트너십)  
+        - general: 일반적인 시장 소식
+        """
+        categorized = {
+            "critical": [],
+            "important": [],
+            "general": []
+        }
+        
+        critical_keywords = [
+            "급등", "급락", "폭등", "폭락", "상한가", "하한가",
+            "실적 쇼크", "어닝 서프라이즈", "규제", "제재", "조사",
+            "리콜", "사고", "논란", "스캔들",
+            "plunge", "surge", "crash", "investigation", "scandal"
+        ]
+        
+        important_keywords = [
+            "목표가", "상향", "하향", "매수", "매도",
+            "신제품", "출시", "계약", "파트너십", "투자",
+            "배당", "자사주", "실적", "성장", "혁신",
+            "target", "upgrade", "downgrade", "buy", "sell",
+            "launch", "partnership", "dividend", "earnings"
+        ]
+        
+        for article in articles:
+            title = article.get("title", "").lower()
+            
+            # Critical 뉴스 체크
+            if any(keyword in title for keyword in critical_keywords):
+                categorized["critical"].append(article)
+            # Important 뉴스 체크
+            elif any(keyword in title for keyword in important_keywords):
+                categorized["important"].append(article)
+            # 나머지는 General
+            else:
+                categorized["general"].append(article)
+        
+        return categorized

@@ -27,7 +27,11 @@
       "Bash(./restart.sh:*)",
       "Bash(curl:*)",
       "Bash(grep:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(npm start)",
+      "Bash(pkill:*)",
+      "Bash(cat:*)",
+      "Bash(pdftotext:*)"
     ],
     "deny": []
   }

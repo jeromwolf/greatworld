@@ -7,11 +7,15 @@ import sys
 from datetime import datetime
 from typing import List, Dict, Any
 import json
+from dotenv import load_dotenv
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+
+# 환경변수 로드
+load_dotenv()
 
 # 프로젝트 루트 디렉토리를 파이썬 경로에 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,6 +27,7 @@ from agents.sec_agent import SECAgent
 from agents.news_agent import NewsAgent
 from agents.social_agent import SocialAgent
 from agents.sentiment_agent import SentimentAgent
+from api.professional_report_formatter import ProfessionalReportFormatter
 
 app = FastAPI(title="StockAI API", version="0.1.0")
 
@@ -107,6 +112,11 @@ def get_reliability_level(data_source_summary: Dict[str, int]) -> str:
 @app.get("/")
 async def root():
     """메인 페이지 반환"""
+    return FileResponse("frontend/report.html")
+
+@app.get("/chat")
+async def chat():
+    """채팅 페이지 반환"""
     return FileResponse("frontend/index.html")
 
 @app.get("/health")
@@ -136,7 +146,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             message_data = json.loads(data)
             
             # NLU 처리
+            print(f"[WEBSOCKET] Received message: {message_data['message']}")
             nlu_result = nlu_agent.analyze_query(message_data["message"])
+            print(f"[WEBSOCKET] NLU result: {nlu_result}")
             
             # 진행 상황 알림
             await manager.send_personal_message(
@@ -168,9 +180,49 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             news_task = news_agent.search_news(stock, language="en")
                         tasks.append(("news", news_task))
                     
-                    # 소셜 데이터 수집
-                    async with SocialAgent() as social_agent:
-                        if not is_korean:
+                    # 공시 데이터 수집
+                    if is_korean:
+                        # DART (한국 공시) - 환경변수 명시적 전달
+                        dart_api_key = os.getenv("DART_API_KEY")
+                        print(f"[DART INIT] API Key available: {bool(dart_api_key)}")
+                        print(f"[DART INIT] Processing Korean stock: {stock}")
+                        
+                        # 종목코드로 변환 필요 (예: 삼성전자 -> 005930)
+                        stock_code_map = {
+                            "삼성전자": "005930",
+                            "SK하이닉스": "000660",
+                            "sk하이닉스": "000660",  # 소문자 버전도 추가
+                            "에스케이하이닉스": "000660",
+                            "네이버": "035420",
+                            "카카오": "035720",
+                            "LG에너지솔루션": "373220",
+                            "현대차": "005380",
+                            "현대자동차": "005380",
+                            "기아": "000270",
+                            "LG전자": "066570",
+                            "포스코": "005490"
+                        }
+                        stock_code = stock_code_map.get(stock, stock)
+                        print(f"[DART] Fetching disclosures for {stock} (code: {stock_code})")
+                        
+                        # DART 에이전트 직접 실행 (컨텍스트 매니저 문제 해결)
+                        async with DartAgent(api_key=dart_api_key) as dart_agent:
+                            dart_result = await dart_agent.get_major_disclosures(stock_code, days=90)
+                        
+                        # 즉시 실행된 결과를 Future로 래핑
+                        async def get_dart_result():
+                            return dart_result
+                        tasks.append(("dart", get_dart_result()))
+                    else:
+                        # SEC (미국 공시)
+                        async with SECAgent() as sec_agent:
+                            sec_task = sec_agent.get_recent_filings(stock)
+                            tasks.append(("sec", sec_task))
+                    
+                    # 소셜 데이터 수집 - API 키가 있을 때만
+                    reddit_api_key = os.getenv("REDDIT_CLIENT_ID")
+                    if reddit_api_key and not is_korean:
+                        async with SocialAgent() as social_agent:
                             reddit_task = social_agent.search_reddit(stock)
                             tasks.append(("reddit", reddit_task))
                     
@@ -182,6 +234,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         try:
                             result = await task
                             results[name] = result
+                            print(f"[{name}] Status: {result.get('status')}, Count: {result.get('count', 0)}, Data source: {result.get('data_source')}")
                             
                             # 데이터 소스 추적
                             if result and result.get("data_source"):
@@ -189,6 +242,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 data_source_summary[data_source_type] += 1
                         except Exception as e:
                             print(f"Error in {name}: {str(e)}")
+                            results[name] = {"status": "error", "message": str(e), "data_source": "MOCK_DATA"}
                             data_source_summary["MOCK_DATA"] += 1
                     
                     # 감성 분석 실행
@@ -200,14 +254,20 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         data_sources["news"] = results["news"]
                     if "reddit" in results and results["reddit"]["status"] == "success":
                         data_sources["social"] = {"reddit": results["reddit"]}
+                    if "dart" in results and results["dart"]["status"] == "success":
+                        data_sources["disclosure"] = results["dart"]
+                    if "sec" in results and results["sec"]["status"] == "success":
+                        data_sources["disclosure"] = results["sec"]
                     
                     # 감성 분석
                     if data_sources:
+                        print(f"[SENTIMENT] Starting sentiment analysis for {stock}")
                         sentiment_result = await sentiment_agent.analyze_sentiment(
                             ticker=stock,
                             company_name=stock,
                             data_sources=data_sources
                         )
+                        print(f"[SENTIMENT] Result: sentiment={sentiment_result.overall_sentiment}, label={sentiment_result.sentiment_label}")
                         
                         # 감성 분석 결과의 데이터 소스도 추적
                         for source_name, source_data in sentiment_result.data_sources.items():
@@ -219,18 +279,40 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         # 데이터 소스 요약 생성
                         data_source_info = create_data_source_info(data_source_summary)
                         
-                        # 결과 포맷팅
-                        analysis_message = f"""
-📊 **{sentiment_result.company_name} 분석 결과**{data_source_info}
-**전체 감성**: {sentiment_result.sentiment_label} (점수: {sentiment_result.overall_sentiment})
-**신뢰도**: {sentiment_result.confidence:.0%}
-
-**주요 영향 요인:**
-"""
-                        for factor in sentiment_result.key_factors:
-                            analysis_message += f"• {factor}\\n"
+                        # 재무 데이터 추출
+                        financial_data = None
+                        if "dart" in results and results["dart"]["status"] == "success":
+                            disclosures = results["dart"].get("disclosures", [])
+                            for disclosure in disclosures:
+                                if "반기보고서" in disclosure.get('report_nm', ''):
+                                    try:
+                                        async with DartAgent(api_key=dart_api_key) as detail_agent:
+                                            detail = await detail_agent.get_disclosure_detail(
+                                                disclosure.get('rcept_no', ''), 
+                                                disclosure.get('report_nm', '')
+                                            )
+                                            summary = detail.get('summary', '')
+                                            if "📊 **실제 재무 데이터**" in summary:
+                                                lines = summary.split("\\n")
+                                                financial_data = ""
+                                                for line in lines[1:5]:
+                                                    if line.strip() and any(x in line for x in ["매출액", "영업이익", "당기순이익"]):
+                                                        clean_line = line.replace("**", "").replace("•", "▫️")
+                                                        financial_data += clean_line + "\\n"
+                                                break
+                                    except:
+                                        pass
                         
-                        analysis_message += f"\\n**AI 의견:**\\n{sentiment_result.recommendation}"
+                        # Professional Report Formatter 사용
+                        formatter = ProfessionalReportFormatter()
+                        analysis_message = formatter.format_report(
+                            company_name=sentiment_result.company_name,
+                            sentiment_result=sentiment_result,
+                            data_source_info=data_source_info,
+                            news_data=results.get("news", {}),
+                            dart_data=results.get("dart", {}),
+                            financial_data=financial_data
+                        )
                         
                         # 분석 결과 전송
                         response = {
@@ -261,6 +343,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         }
                         
                 except Exception as e:
+                    import traceback
+                    print(f"[ERROR] Analysis failed: {str(e)}")
+                    print(f"[ERROR] Traceback: {traceback.format_exc()}")
                     response = {
                         "type": "bot",
                         "message": f"분석 중 오류가 발생했습니다: {str(e)}",
@@ -285,14 +370,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         manager.disconnect(websocket)
         print(f"Client {client_id} disconnected")
     except Exception as e:
-        print(f"Error in websocket connection: {str(e)}")
-        manager.disconnect(websocket)
+        import traceback
+        print(f"[WEBSOCKET ERROR] Error in connection: {str(e)}")
+        print(f"[WEBSOCKET ERROR] Type: {type(e).__name__}")
+        print(f"[WEBSOCKET ERROR] Traceback: {traceback.format_exc()}")
+        if websocket in manager.active_connections:
+            manager.disconnect(websocket)
 
 @app.post("/api/analyze")
 async def analyze_query(query: Dict[str, Any]):
     """REST API 엔드포인트 - 쿼리 분석"""
     try:
-        nlu_result = nlu_agent.parse_query(query.get("message", ""))
+        nlu_result = nlu_agent.analyze_query(query.get("message", ""))
         return {"success": True, "result": nlu_result}
     except Exception as e:
         return {"success": False, "error": str(e)}

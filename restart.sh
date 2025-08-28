@@ -65,6 +65,10 @@ restart_backend() {
     source venv/bin/activate
     
     log "FastAPI 서버 시작 (포트: 8200)..."
+    # .env 파일의 환경변수를 명시적으로 export
+    set -a
+    source .env
+    set +a
     nohup uvicorn api.main:app --reload --port 8200 > logs/backend.log 2>&1 &
     
     sleep 2
