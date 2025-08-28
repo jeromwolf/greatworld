@@ -63,10 +63,16 @@ greatWorld/
    - JWT 인증 사용
    - Rate limiting 적용
 
-4. **포트 설정**
-   - FastAPI: 8200
-   - Next.js: 3200
+4. **포트 설정 및 프론트엔드 아키텍처**
+   - **메인 개발**: Port 8200 (FastAPI + HTML Dashboard) 
+   - **참고용**: Port 3200 (Next.js React)
    - WebSocket: ws://localhost:8200/ws
+   
+   **🎯 개발 방향 결정 (2025-08-29):**
+   - **Port 8200이 더 완성도 높음** → 메인 개발 포트로 결정
+   - FastAPI가 정적 파일도 서빙하는 통합 아키텍처
+   - 단일 서버 실행으로 개발/배포 효율성 극대화
+   - Next.js(3200)는 참고용으로 유지
 
 ## 현재 진행 상황 (2025-08-28 → 2025-08-29 업데이트)
 - [x] PRD 작성 완료
@@ -105,6 +111,12 @@ greatWorld/
   - API main.py에서 데이터 소스 요약 및 신뢰도 표시
   - 모의 데이터 사용 시 한글 경고 메시지 표시
   - 실제 API vs 모의 데이터 명확한 구분
+- [x] **데이터 수집 기간 최적화** (2025-08-29)
+  - PeriodConfig 클래스 구현으로 데이터별 차별화된 기간 설정
+  - 뉴스: 7일 → 14일 (뉴스 시장 반영 시간 고려)
+  - 공시: 90일 → 45일 (공시 영향력 지속성 반영)
+  - 소셜: 7일 유지 (빠른 트렌드 변화)
+  - 시간 가중치 감쇠 및 투자 스타일별 조정 기능 추가
 
 ## 완료된 파일
 ### Backend (Python/FastAPI)
@@ -116,6 +128,8 @@ greatWorld/
 - `agents/social_agent.py`: 소셜 미디어 데이터 수집 에이전트 (data_source 필드 포함)
 - `agents/sentiment_agent.py`: 감성 분석 통합 에이전트 (data_source 필드 포함)
 - `api/main.py`: FastAPI 백엔드 (에이전트 통합, 데이터 소스 요약 표시)
+- `config/period_config.py`: 데이터별 최적 수집 기간 설정 (신규)
+- `period_optimization_analysis.md`: 기간 설정 분석 문서 (신규)
 - `requirements.txt`: 프로젝트 의존성 정의
 - `.env.example`: 환경 변수 템플릿
 - `restart.sh`: 서비스 자동 시작/중지 스크립트
@@ -147,21 +161,13 @@ greatWorld/
 
 ## 실행 방법
 
-### Backend 실행
+### 메인 개발 환경 (권장)
 ```bash
 # Python 가상환경 활성화
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# FastAPI 서버 실행
+# FastAPI 서버 실행 (프론트엔드 포함)
 uvicorn api.main:app --reload --port 8200
-```
-
-### Frontend 실행 (Next.js)
-```bash
-# 별도 터미널에서
-cd stockai-frontend
-npm install
-npm run dev
 ```
 
 ### 자동 실행 (권장)
@@ -173,10 +179,23 @@ npm run dev
 ./restart.sh status
 ```
 
+### Next.js 실행 (참고용)
+```bash
+# 별도 터미널에서
+cd stockai-frontend
+npm install
+npm run dev
+```
+
 ### 접속
-- Next.js UI: http://localhost:3200 (권장)
-- 기본 UI: http://localhost:8200
+- **메인 UI**: http://localhost:8200 ⭐️ **권장 - Professional Dashboard**
+- 참고 UI: http://localhost:3200 (Next.js React)
 - API 문서: http://localhost:8200/docs
+
+**🎯 개발 우선순위:**
+1. Port 8200 대시보드 기능 확장
+2. `frontend/report.html`, `frontend/static/report.js` 중심 개발
+3. 단일 서버 아키텍처로 배포 효율성 최대화
 
 ## 다음 단계 (2025-08-30 예정)
 1. **Financial Agent 개발**
