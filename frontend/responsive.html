@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1976D2">
+    <meta name="description" content="StockAI - AI 기반 주식 분석 챗봇">
+    
+    <title>StockAI - AI 주식 분석 챗봇</title>
+    
+    <!-- 반응형 CSS -->
+    <link rel="stylesheet" href="/static/responsive.css">
+    
+    <!-- 폰트 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- 아이콘 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--light-bg);
+            color: var(--text-primary);
+        }
+        
+        /* 네비게이션 바 */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: var(--primary-color);
+            color: white;
+            padding: var(--spacing-md);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 60px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .connection-indicator {
+            position: absolute;
+            right: var(--spacing-md);
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: var(--font-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: var(--font-xl);
+            font-weight: 700;
+        }
+        
+        .navbar-menu {
+            display: none;
+        }
+        
+        .menu-toggle {
+            font-size: var(--font-xl);
+            cursor: pointer;
+            display: block;
+        }
+        
+        /* 메인 컨테이너 */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 60px);
+        }
+        
+        /* 사이드바 (데스크톱) */
+        .sidebar {
+            display: none;
+            background: white;
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+        }
+        
+        /* 빠른 명령어 */
+        .quick-commands {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .quick-commands h3 {
+            font-size: var(--font-lg);
+            margin-bottom: var(--spacing-md);
+            color: var(--text-secondary);
+        }
+        
+        .command-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+        
+        .chip {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--light-bg);
+            border-radius: 16px;
+            font-size: var(--font-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+        
+        .chip:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-1px);
+        }
+        
+        /* 모바일 메뉴 */
+        .mobile-menu {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+        
+        .mobile-menu.active {
+            transform: translateY(0);
+        }
+        
+        .mobile-menu-content {
+            padding: var(--spacing-lg);
+        }
+        
+        /* 스켈레톤 로더 */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .skeleton-text {
+            height: 20px;
+            margin-bottom: var(--spacing-sm);
+            border-radius: 4px;
+        }
+        
+        /* 플로팅 액션 버튼 */
+        .fab {
+            position: fixed;
+            bottom: var(--spacing-lg);
+            right: var(--spacing-lg);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        }
+        
+        /* 툴팁 */
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip-text {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: 4px;
+            font-size: var(--font-sm);
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            opacity: 1;
+        }
+        
+        /* 반응형 조정 */
+        @media screen and (min-width: 768px) {
+            .menu-toggle {
+                display: none;
+            }
+            
+            .navbar-menu {
+                display: flex;
+                gap: var(--spacing-lg);
+            }
+            
+            .navbar-menu a {
+                color: white;
+                text-decoration: none;
+                transition: opacity 0.2s ease;
+            }
+            
+            .navbar-menu a:hover {
+                opacity: 0.8;
+            }
+        }
+        
+        @media screen and (min-width: 1024px) {
+            .main-container {
+                flex-direction: row;
+            }
+            
+            .chat-container {
+                flex: 1;
+            }
+            
+            .sidebar {
+                display: block;
+                width: 300px;
+                border-left: 1px solid #E0E0E0;
+            }
+        }
+        
+        @media screen and (min-width: 1440px) {
+            .sidebar {
+                width: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">
+                <i class="fas fa-chart-line"></i>
+                <span>StockAI</span>
+            </div>
+            
+            <div class="navbar-menu">
+                <a href="#chat">채팅</a>
+                <a href="#portfolio">포트폴리오</a>
+                <a href="#analysis">분석</a>
+                <a href="#settings">설정</a>
+            </div>
+            
+            <div class="menu-toggle" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- 모바일 메뉴 -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <div class="quick-commands">
+                <h3>빠른 명령어</h3>
+                <div class="command-chips">
+                    <div class="chip" onclick="sendQuickCommand('삼성전자 분석해줘')">삼성전자</div>
+                    <div class="chip" onclick="sendQuickCommand('SK하이닉스 분석해줘')">SK하이닉스</div>
+                    <div class="chip" onclick="sendQuickCommand('AAPL 분석해줘')">애플</div>
+                    <div class="chip" onclick="sendQuickCommand('TSLA 분석해줘')">테슬라</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 메인 컨테이너 -->
+    <div class="main-container">
+        <!-- 채팅 컨테이너 -->
+        <div class="chat-container" id="chatContainer">
+            <div class="chat-header">
+                <h2 style="margin: 0;">AI 주식 분석 챗봇</h2>
+                <p style="margin: 0; font-size: var(--font-sm); opacity: 0.9;">실시간 주식 분석 및 투자 인사이트</p>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <!-- 웰컴 메시지 -->
+                <div class="message bot">
+                    <div class="message-bubble">
+                        <h3>안녕하세요! StockAI입니다 👋</h3>
+                        <p>저는 AI 기반 주식 분석 도우미입니다. 다음과 같은 도움을 드릴 수 있습니다:</p>
+                        <ul style="margin: var(--spacing-sm) 0; padding-left: var(--spacing-lg);">
+                            <li>실시간 주가 정보 조회</li>
+                            <li>재무제표 분석 및 기업 가치 평가</li>
+                            <li>뉴스 및 공시 기반 감성 분석</li>
+                            <li>기술적 지표 분석</li>
+                            <li>투자 의견 및 추천</li>
+                        </ul>
+                        <p>분석하고 싶은 종목명을 입력해주세요!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input-container">
+                <div style="position: relative;">
+                    <textarea 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="종목명을 입력하세요 (예: 삼성전자, AAPL)"
+                        rows="1"
+                        onkeydown="handleEnter(event)"
+                        oninput="autoResize(this)"
+                    ></textarea>
+                    
+                    <div class="tooltip" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%);">
+                        <button 
+                            class="btn btn-primary" 
+                            onclick="sendMessage()"
+                            style="padding: var(--spacing-xs) var(--spacing-md);"
+                        >
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                        <span class="tooltip-text">전송 (Enter)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 사이드바 (데스크톱) -->
+        <aside class="sidebar">
+            <div class="quick-commands">
+                <h3>인기 종목</h3>
+                <div class="command-chips">
+                    <div class="chip" onclick="sendQuickCommand('삼성전자 분석해줘')">
+                        <i class="fas fa-mobile-alt"></i> 삼성전자
+                    </div>
+                    <div class="chip" onclick="sendQuickCommand('SK하이닉스 분석해줘')">
+                        <i class="fas fa-microchip"></i> SK하이닉스
+                    </div>
+                    <div class="chip" onclick="sendQuickCommand('현대차 분석해줘')">
+                        <i class="fas fa-car"></i> 현대차
+                    </div>
+                    <div class="chip" onclick="sendQuickCommand('네이버 분석해줘')">
+                        <i class="fas fa-search"></i> 네이버
+                    </div>
+                    <div class="chip" onclick="sendQuickCommand('카카오 분석해줘')">
+                        <i class="fas fa-comment"></i> 카카오
+                    </div>
+                </div>
+            </div>
+            
+            <div class="quick-commands">
+                <h3>해외 주식</h3>
+                <div class="command-chips">
+                    <div class="chip" onclick="sendQuickCommand('AAPL 분석해줘')">
+                        <i class="fab fa-apple"></i> Apple
+                    </div>
+                    <div class="chip" onclick="sendQuickCommand('GOOGL 분석해줘')">
+                        <i class="fab fa-google"></i> Google
+                    </div>
+                    <div class="chip" onclick="sendQuickCommand('TSLA 분석해줘')">
+                        <i class="fas fa-bolt"></i> Tesla
+                    </div>
+                    <div class="chip" onclick="sendQuickCommand('MSFT 분석해줘')">
+                        <i class="fab fa-microsoft"></i> Microsoft
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: var(--spacing-lg);">
+                <h4 style="margin-top: 0;">최근 분석</h4>
+                <div id="recentAnalyses" class="recent-list">
+                    <!-- 최근 분석 목록 -->
+                </div>
+            </div>
+        </aside>
+    </div>
+    
+    <!-- 플로팅 액션 버튼 -->
+    <div class="fab" onclick="scrollToBottom()" style="display: none;" id="scrollFab">
+        <i class="fas fa-chevron-down"></i>
+    </div>
+    
+    <!-- JavaScript -->
+    <script>
+        let ws = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        let recentAnalyses = [];
+        let isConnecting = false;
+        
+        // WebSocket 연결
+        function connectWebSocket() {
+            // 이미 연결 중이거나 연결되어 있으면 종료
+            if (isConnecting || (ws && ws.readyState === WebSocket.OPEN)) {
+                return;
+            }
+            
+            isConnecting = true;
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const clientId = `client_${Math.random().toString(36).substr(2, 9)}`;
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/${clientId}`);
+            
+            ws.onopen = () => {
+                console.log('WebSocket 연결됨');
+                reconnectAttempts = 0;
+                isConnecting = false;
+                showConnectionStatus('connected');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                displayMessage(data);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket 연결 종료');
+                isConnecting = false;
+                showConnectionStatus('disconnected');
+                attemptReconnect();
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket 에러:', error);
+                isConnecting = false;
+                showConnectionStatus('error');
+            };
+        }
+        
+        // 재연결 시도
+        function attemptReconnect() {
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+                console.log(`${delay/1000}초 후 재연결 시도 (${reconnectAttempts}/${maxReconnectAttempts})`);
+                setTimeout(connectWebSocket, delay);
+            }
+        }
+        
+        // 연결 상태 표시
+        function showConnectionStatus(status) {
+            const header = document.querySelector('.chat-header');
+            let indicator = document.querySelector('.connection-indicator');
+            
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.className = 'connection-indicator';
+                header.appendChild(indicator);
+            }
+            
+            switch(status) {
+                case 'connected':
+                    indicator.innerHTML = '<i class="fas fa-circle" style="color: #4CAF50; font-size: 8px;"></i> <span>연결됨</span>';
+                    break;
+                case 'disconnected':
+                    indicator.innerHTML = '<i class="fas fa-circle" style="color: #FF9800; font-size: 8px;"></i> <span>재연결 중...</span>';
+                    break;
+                case 'error':
+                    indicator.innerHTML = '<i class="fas fa-circle" style="color: #F44336; font-size: 8px;"></i> <span>연결 오류</span>';
+                    break;
+            }
+        }
+        
+        // 메시지 전송
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message && ws && ws.readyState === WebSocket.OPEN) {
+                // 사용자 메시지 표시
+                displayMessage({
+                    type: 'user',
+                    message: message,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // WebSocket으로 전송
+                ws.send(JSON.stringify({
+                    message: message,
+                    timestamp: new Date().toISOString()
+                }));
+                
+                // 입력 필드 초기화
+                input.value = '';
+                input.style.height = 'auto';
+                
+                // 최근 분석에 추가
+                addToRecentAnalyses(message);
+            }
+        }
+        
+        // 빠른 명령어 전송
+        function sendQuickCommand(command) {
+            document.getElementById('chatInput').value = command;
+            sendMessage();
+            
+            // 모바일 메뉴 닫기
+            const mobileMenu = document.getElementById('mobileMenu');
+            if (mobileMenu.classList.contains('active')) {
+                toggleMobileMenu();
+            }
+        }
+        
+        // 메시지 표시
+        function displayMessage(data) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${data.type}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            
+            if (data.type === 'system') {
+                bubble.innerHTML = `<p style="color: var(--text-secondary); font-style: italic;">${data.message}</p>`;
+            } else if (data.type === 'bot') {
+                // 마크다운 렌더링
+                bubble.innerHTML = renderMarkdown(data.message);
+                
+                // 감성 분석 결과가 있으면 표시
+                if (data.data && data.data.sentiment !== undefined) {
+                    const sentimentDiv = createSentimentDisplay(data.data);
+                    bubble.appendChild(sentimentDiv);
+                }
+            } else {
+                bubble.textContent = data.message;
+            }
+            
+            messageDiv.appendChild(bubble);
+            messagesContainer.appendChild(messageDiv);
+            
+            // 스크롤을 아래로
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // 스크롤 버튼 표시 여부 확인
+            checkScrollButton();
+        }
+        
+        // 감성 분석 표시 생성
+        function createSentimentDisplay(data) {
+            const sentimentDiv = document.createElement('div');
+            sentimentDiv.className = 'sentiment-display';
+            sentimentDiv.style.marginTop = 'var(--spacing-md)';
+            
+            const score = data.sentiment || 0;
+            const percentage = Math.abs(score * 100);
+            const sentimentClass = score > 0.2 ? 'positive' : score < -0.2 ? 'negative' : 'neutral';
+            
+            sentimentDiv.innerHTML = `
+                <div class="sentiment-bar">
+                    <div class="sentiment-fill sentiment-${sentimentClass}" 
+                         style="width: ${percentage}%;"></div>
+                </div>
+                <p style="text-align: center; margin-top: var(--spacing-xs); font-size: var(--font-sm);">
+                    감성 점수: ${score.toFixed(2)}
+                </p>
+            `;
+            
+            return sentimentDiv;
+        }
+        
+        // 마크다운 렌더링 (간단한 버전)
+        function renderMarkdown(text) {
+            return text
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+                .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+                .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+                .replace(/^- (.+)$/gm, '<li>$1</li>')
+                .replace(/^• (.+)$/gm, '<li>$1</li>')
+                .replace(/(<li>.*<\/li>)\n/g, '<ul>$1</ul>')
+                .replace(/\n/g, '<br>');
+        }
+        
+        // 최근 분석 추가
+        function addToRecentAnalyses(query) {
+            recentAnalyses.unshift({
+                query: query,
+                timestamp: new Date()
+            });
+            
+            // 최대 10개까지만 유지
+            if (recentAnalyses.length > 10) {
+                recentAnalyses = recentAnalyses.slice(0, 10);
+            }
+            
+            updateRecentAnalysesList();
+        }
+        
+        // 최근 분석 목록 업데이트
+        function updateRecentAnalysesList() {
+            const container = document.getElementById('recentAnalyses');
+            if (!container) return;
+            
+            container.innerHTML = recentAnalyses.map((item, index) => `
+                <div class="recent-item" onclick="sendQuickCommand('${item.query}')" 
+                     style="cursor: pointer; padding: var(--spacing-sm); border-bottom: 1px solid #E0E0E0;">
+                    <div style="font-size: var(--font-sm);">${item.query}</div>
+                    <div style="font-size: var(--font-xs); color: var(--text-secondary);">
+                        ${formatTime(item.timestamp)}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 시간 포맷팅
+        function formatTime(date) {
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return '방금 전';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
+            return `${Math.floor(diff / 86400000)}일 전`;
+        }
+        
+        // 모바일 메뉴 토글
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            mobileMenu.classList.toggle('active');
+        }
+        
+        // Enter 키 처리
+        function handleEnter(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        // 텍스트 영역 자동 크기 조정
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+        
+        // 스크롤 버튼 표시 여부 확인
+        function checkScrollButton() {
+            const messagesContainer = document.getElementById('chatMessages');
+            const scrollFab = document.getElementById('scrollFab');
+            const isScrolledUp = messagesContainer.scrollHeight - messagesContainer.scrollTop > messagesContainer.clientHeight + 100;
+            
+            scrollFab.style.display = isScrolledUp ? 'flex' : 'none';
+        }
+        
+        // 스크롤을 맨 아래로
+        function scrollToBottom() {
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTo({
+                top: messagesContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+        
+        // 스크롤 이벤트 리스너
+        document.getElementById('chatMessages').addEventListener('scroll', checkScrollButton);
+        
+        
+        // 페이지 언로드 시 WebSocket 종료
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                ws.close();
+            }
+        });
+        
+        // 화면 크기 변경 감지
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                // 화면 크기에 따른 레이아웃 조정
+                adjustLayout();
+            }, 250);
+        });
+        
+        // 레이아웃 조정
+        function adjustLayout() {
+            const width = window.innerWidth;
+            const chatContainer = document.getElementById('chatContainer');
+            
+            // 모바일에서 전체 화면 채팅
+            if (width < 1024) {
+                chatContainer.style.maxWidth = '100%';
+            } else {
+                chatContainer.style.maxWidth = null;
+            }
+        }
+        
+        // 초기 레이아웃 설정
+        adjustLayout();
+        
+        // DOMContentLoaded 시 한 번만 연결
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+        });
+    </script>
+</body>
+</html>

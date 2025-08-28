@@ -67,8 +67,10 @@ class SimpleNLUAgent:
     def _init_entity_patterns(self) -> Dict[str, str]:
         """엔티티 추출을 위한 패턴 초기화"""
         return {
-            # 한국 주식
-            "korean_stocks": r"(삼성전자|SK하이닉스|sk하이닉스|하이닉스|에스케이하이닉스|SK|에스케이|LG에너지솔루션|현대차|카카오|네이버|셀트리온|삼성바이오로직스|포스코|KB금융|신한금융)",
+            # 한국 주식 (정확한 매칭)
+            "korean_stocks": r"(삼성전자|SK하이닉스|sk하이닉스|하이닉스|에스케이하이닉스|SK|에스케이|LG에너지솔루션|현대차|카카오|네이버|셀트리온|삼성바이오로직스|포스코|KB금융|신한금융|더본코리아|더본|CJ|롯데|신세계|현대백화점|이마트)",
+            # 한국 주식 (일반적인 한글 패턴 - 알려지지 않은 종목 포착)
+            "unknown_korean_stock": r"([가-힣]{2,8}(?:전자|화학|바이오|제약|건설|유통|식품|통신|금융|보험|증권|카드|코리아|그룹|홀딩스|플러스|산업|엔터|게임|테크|미디어))",
             # 미국 주식  
             "us_stocks": r"\b(AAPL|Apple|애플|MSFT|Microsoft|마이크로소프트|GOOGL|GOOG|Google|구글|AMZN|Amazon|아마존|TSLA|Tesla|테슬라|META|Meta|메타|NVDA|Nvidia|엔비디아)\b",
             # 기간
@@ -136,6 +138,9 @@ class SimpleNLUAgent:
             common_words = {'ME', 'IS', 'IT', 'BE', 'TO', 'OF', 'IN', 'ON', 'AT', 'BY', 'WE', 'DO', 'IF', 'OR', 'SO', 'NO', 'UP', 'TELL', 'ABOUT', 'VS', 'AND', 'THE', 'FOR', 'SHOW'}
             tickers = [t for t in entities["ticker"] if not re.search(r'[가-힣]', t) and t.upper() not in common_words]
             stocks.extend(tickers)
+        if "unknown_korean_stock" in entities:
+            # 알려지지 않은 한국 종목 추가
+            stocks.extend(entities["unknown_korean_stock"])
             
         if stocks:
             # 중복 제거 (대소문자 구분 없이)

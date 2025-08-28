@@ -22,7 +22,8 @@ class ProfessionalReportFormatter:
     
     @staticmethod
     def format_report(company_name: str, sentiment_result, data_source_info: str, 
-                     news_data: Dict, dart_data: Dict, financial_data: str = None) -> str:
+                     news_data: Dict, dart_data: Dict, financial_data: str = None,
+                     price_data: Dict = None, financial_analysis: Dict = None) -> str:
         """전체 리포트 포맷팅"""
         
         # 데이터 신뢰도 계산
@@ -41,9 +42,35 @@ class ProfessionalReportFormatter:
 ================================================================================
                     💹 {company_name} 투자 분석 리포트 💹
 ================================================================================
-
-📊 데이터 신뢰도: {reliability_text} (실제 데이터 {real_count}개 / 전체 {real_count + mock_count}개)
-{data_source_info}
+"""
+        
+        # 주가 정보 표시 (최상단)
+        if price_data and price_data.get("status") == "success":
+            price_info = price_data.get("price_data", {})
+            current_price = price_info.get("current_price", 0)
+            change_percent = price_info.get("change_percent", 0)
+            change = price_info.get("change", 0)
+            
+            # 등락 표시
+            if change_percent > 0:
+                price_icon = "📈"
+                change_str = f"+{change_percent:.2f}%"
+            elif change_percent < 0:
+                price_icon = "📉"  
+                change_str = f"{change_percent:.2f}%"
+            else:
+                price_icon = "➖"
+                change_str = "0.00%"
+                
+            report += f"\n💰 현재가: {current_price:,.0f}원 {price_icon} {change_str}"
+            report += f"\n📊 거래량: {price_info.get('volume', 0):,}"
+            report += f"\n📈 52주 최고: {price_info.get('week_52_high', 0):,.0f}원"
+            report += f"\n📉 52주 최저: {price_info.get('week_52_low', 0):,.0f}원\n"
+            
+        report += f"\n📊 데이터 신뢰도: {reliability_text} (실제 데이터 {real_count}개 / 전체 {real_count + mock_count}개)"
+        report += f"\n{data_source_info}"
+        
+        report += f"""
 
 --------------------------------------------------------------------------------
 📊 종합 평가
@@ -92,12 +119,42 @@ class ProfessionalReportFormatter:
             
             report += "\n"
         
-        # 공시 및 재무 데이터
-        if dart_data.get("disclosures"):
+        # 재무 분석 데이터 (별도 섹션)
+        if financial_analysis and financial_analysis.get("status") == "success":
             report += "--------------------------------------------------------------------------------\n"
-            report += f"📋 주요 공시 및 재무 현황\n"
+            report += f"💰 재무 건전성 분석\n"
             report += "--------------------------------------------------------------------------------\n"
             
+            # 재무 건전성 점수
+            health_score = financial_analysis.get("health_score", {})
+            report += f"▫️ 재무 건전성: {health_score.get('grade', 'N/A')} ({health_score.get('grade_text', '')})\n"
+            report += f"▫️ 종합 점수: {health_score.get('score', 0)}/{health_score.get('max_score', 100)}점\n"
+            report += f"▫️ {health_score.get('evaluation', '')}\n\n"
+            
+            # 주요 재무 비율
+            ratios = financial_analysis.get("ratios", {})
+            if ratios:
+                report += "📊 주요 재무지표\n"
+                report += f"  • ROE: {ratios.get('roe', 0):.1f}% (자기자본수익률)\n"
+                report += f"  • ROA: {ratios.get('roa', 0):.1f}% (총자산수익률)\n"
+                report += f"  • 영업이익률: {ratios.get('opm', 0):.1f}%\n"
+                report += f"  • 부채비율: {ratios.get('debt_ratio', 0):.1f}%\n"
+                report += f"  • 유동비율: {ratios.get('current_ratio', 0):.1f}%\n\n"
+            
+            # 투자 포인트
+            investment_points = financial_analysis.get("investment_points", [])
+            if investment_points:
+                report += "💡 주요 투자 포인트\n"
+                for point in investment_points[:4]:
+                    report += f"  {point}\n"
+                report += "\n"
+        
+        # 공시 및 재무 데이터
+        report += "--------------------------------------------------------------------------------\n"
+        report += f"📋 주요 공시 현황\n"
+        report += "--------------------------------------------------------------------------------\n"
+        
+        if dart_data.get("disclosures"):
             # 재무 데이터가 있으면 표시
             if financial_data:
                 report += financial_data + "\n"
@@ -105,7 +162,12 @@ class ProfessionalReportFormatter:
             # 공시 목록
             for disclosure in dart_data["disclosures"][:3]:
                 report += f"▫️ {disclosure['report_nm']} ({disclosure['rcept_dt']})\n"
-            report += "\n"
+        else:
+            # 공시가 없는 경우
+            report += "💡 최근 45일간 주요 공시가 없습니다.\n"
+            report += "• 정기보고서 시즌이 아니거나 특별한 공시사항이 없는 기간입니다.\n"
+            
+        report += "\n"
         
         # 감성 분포 차트
         report += "--------------------------------------------------------------------------------\n"

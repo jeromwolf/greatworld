@@ -27,6 +27,8 @@ from agents.sec_agent import SECAgent
 from agents.news_agent import NewsAgent
 from agents.social_agent import SocialAgent
 from agents.sentiment_agent import SentimentAgent
+from agents.price_agent import PriceAgent
+from agents.financial_agent import FinancialAgent
 from api.professional_report_formatter import ProfessionalReportFormatter
 from config.period_config import PeriodConfig
 
@@ -113,12 +115,17 @@ def get_reliability_level(data_source_summary: Dict[str, int]) -> str:
 @app.get("/")
 async def root():
     """메인 페이지 반환"""
-    return FileResponse("frontend/report.html")
+    return FileResponse("frontend/responsive.html")
 
 @app.get("/chat")
 async def chat():
     """채팅 페이지 반환"""
     return FileResponse("frontend/index.html")
+
+@app.get("/responsive")
+async def responsive():
+    """반응형 페이지 반환"""
+    return FileResponse("frontend/responsive.html")
 
 @app.get("/health")
 async def health_check():
@@ -173,6 +180,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     # 병렬로 데이터 수집
                     tasks = []
                     
+                    # 주가 데이터 수집 (최우선)
+                    async with PriceAgent() as price_agent:
+                        price_task = price_agent.get_stock_price(stock)
+                        tasks.append(("price", price_task))
+                    
                     # 뉴스 수집
                     async with NewsAgent() as news_agent:
                         if is_korean:
@@ -180,6 +192,28 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         else:
                             news_task = news_agent.search_news(stock, language="en")
                         tasks.append(("news", news_task))
+                    
+                    # 재무 데이터 수집 (한국 주식만)
+                    if is_korean:
+                        # 종목코드로 corp_code 찾기
+                        corp_code_map = {
+                            "005930": "00126380",  # 삼성전자
+                            "000660": "00164779",  # SK하이닉스
+                            "035420": "00120030",  # 네이버
+                            "035720": "00258801",  # 카카오
+                            "373220": "00141080",  # LG에너지솔루션  
+                            "005380": "00164742",  # 현대차
+                            "005490": "00126390",  # 포스코
+                            "354200": "00139670",  # 더본코리아
+                        }
+                        
+                        # stock_code_map에서 종목코드를 가져옴
+                        stock_code_val = stock_code_map.get(stock, None)
+                        if stock_code_val and stock_code_val in corp_code_map:
+                            corp_code = corp_code_map[stock_code_val]
+                            async with FinancialAgent() as financial_agent:
+                                financial_task = financial_agent.analyze_financial_health(corp_code)
+                                tasks.append(("financial", financial_task))
                     
                     # 공시 데이터 수집
                     if is_korean:
@@ -202,9 +236,22 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             "현대자동차": "005380",
                             "기아": "000270",
                             "LG전자": "066570",
-                            "포스코": "005490"
+                            "포스코": "005490",
+                            "더본코리아": "354200",
+                            "더본": "354200",
+                            "CJ": "001040",
+                            "롯데": "004990",
+                            "신세계": "004170",
+                            "현대백화점": "069960",
+                            "이마트": "139480"
                         }
-                        stock_code = stock_code_map.get(stock, stock)
+                        stock_code = stock_code_map.get(stock, None)
+                        
+                        if stock_code is None:
+                            # 종목코드를 찾을 수 없는 경우 경고 메시지
+                            print(f"[DART] Unknown stock: {stock} - using as-is for search")
+                            stock_code = stock  # 입력된 이름 그대로 사용
+                        
                         print(f"[DART] Fetching disclosures for {stock} (code: {stock_code})")
                         
                         # DART 에이전트 직접 실행 (최적화된 기간 사용)
@@ -313,7 +360,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             data_source_info=data_source_info,
                             news_data=results.get("news", {}),
                             dart_data=results.get("dart", {}),
-                            financial_data=financial_data
+                            financial_data=financial_data,
+                            price_data=results.get("price", {}),
+                            financial_analysis=results.get("financial", {})
                         )
                         
                         # 분석 결과 전송
@@ -354,13 +403,25 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         "timestamp": datetime.utcnow().isoformat()
                     }
             else:
-                # 다른 의도 처리
-                response = {
-                    "type": "bot",
-                    "message": f"'{message_data['message']}'에 대해 이해했습니다. 현재는 주식 분석 기능만 지원합니다.",
-                    "nlu_result": nlu_result,
-                    "timestamp": datetime.utcnow().isoformat()
-                }
+                # 주식이 인식되지 않은 경우 처리
+                if nlu_result["intent"] == "analyze_stock":
+                    response = {
+                        "type": "bot", 
+                        "message": f"**'{message_data['message']}'**에서 종목을 인식하지 못했습니다.\n\n💡 **사용 예시:**\n• 삼성전자 분석해줘\n• SK하이닉스 주가 어때?\n• 더본코리아 최근 실적\n• AAPL 감성분석\n\n📝 **지원 종목:** 국내 주요 종목, 미국 주요 종목\n🔍 **새로운 종목** 요청시 지원 검토하겠습니다.",
+                        "data": {
+                            "nlu_result": nlu_result,
+                            "suggestion": "supported_stocks"
+                        },
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                else:
+                    # 다른 의도 처리
+                    response = {
+                        "type": "bot",
+                        "message": f"'{message_data['message']}'에 대해 이해했습니다. 현재는 주식 분석 기능만 지원합니다.",
+                        "nlu_result": nlu_result,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
             
             # 응답 전송
             await manager.send_personal_message(

@@ -388,6 +388,18 @@ class DartAgent:
             corp_code = "00266961"  # 네이버
         elif stock_code == "035720":
             corp_code = "00258801"  # 카카오
+        elif stock_code == "354200":
+            corp_code = "00139670"  # 더본코리아 (임시 - 실제 확인 필요)
+        elif stock_code == "001040":
+            corp_code = "00138856"  # CJ (임시 - 실제 확인 필요)
+        elif stock_code == "004990":
+            corp_code = "00142004"  # 롯데홀딩스 (임시 - 실제 확인 필요)
+        elif stock_code == "004170":
+            corp_code = "00161292"  # 신세계 (임시 - 실제 확인 필요)  
+        elif stock_code == "069960":
+            corp_code = "00145526"  # 현대백화점 (임시 - 실제 확인 필요)
+        elif stock_code == "139480":
+            corp_code = "00148874"  # 이마트 (임시 - 실제 확인 필요)
         
         print(f"[DART get_major_disclosures] stock_code: {stock_code}, corp_code: {corp_code}")
         print(f"[DART get_major_disclosures] API key exists: {bool(self.api_key)}")
