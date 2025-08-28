@@ -28,6 +28,7 @@ from agents.news_agent import NewsAgent
 from agents.social_agent import SocialAgent
 from agents.sentiment_agent import SentimentAgent
 from api.professional_report_formatter import ProfessionalReportFormatter
+from config.period_config import PeriodConfig
 
 app = FastAPI(title="StockAI API", version="0.1.0")
 
@@ -191,7 +192,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         stock_code_map = {
                             "삼성전자": "005930",
                             "SK하이닉스": "000660",
-                            "sk하이닉스": "000660",  # 소문자 버전도 추가
+                            "sk하이닉스": "000660",
+                            "하이닉스": "000660",
                             "에스케이하이닉스": "000660",
                             "네이버": "035420",
                             "카카오": "035720",
@@ -205,9 +207,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         stock_code = stock_code_map.get(stock, stock)
                         print(f"[DART] Fetching disclosures for {stock} (code: {stock_code})")
                         
-                        # DART 에이전트 직접 실행 (컨텍스트 매니저 문제 해결)
+                        # DART 에이전트 직접 실행 (최적화된 기간 사용)
                         async with DartAgent(api_key=dart_api_key) as dart_agent:
-                            dart_result = await dart_agent.get_major_disclosures(stock_code, days=90)
+                            dart_result = await dart_agent.get_major_disclosures(stock_code, days=PeriodConfig.DISCLOSURE_PERIOD_DAYS)
                         
                         # 즉시 실행된 결과를 Future로 래핑
                         async def get_dart_result():

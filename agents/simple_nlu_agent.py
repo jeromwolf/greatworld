@@ -68,7 +68,7 @@ class SimpleNLUAgent:
         """엔티티 추출을 위한 패턴 초기화"""
         return {
             # 한국 주식
-            "korean_stocks": r"(삼성전자|SK하이닉스|LG에너지솔루션|현대차|카카오|네이버|셀트리온|삼성바이오로직스|포스코|KB금융|신한금융)",
+            "korean_stocks": r"(삼성전자|SK하이닉스|sk하이닉스|하이닉스|에스케이하이닉스|SK|에스케이|LG에너지솔루션|현대차|카카오|네이버|셀트리온|삼성바이오로직스|포스코|KB금융|신한금융)",
             # 미국 주식  
             "us_stocks": r"\b(AAPL|Apple|애플|MSFT|Microsoft|마이크로소프트|GOOGL|GOOG|Google|구글|AMZN|Amazon|아마존|TSLA|Tesla|테슬라|META|Meta|메타|NVDA|Nvidia|엔비디아)\b",
             # 기간

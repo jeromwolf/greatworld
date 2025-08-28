@@ -96,7 +96,7 @@ class SocialAgent:
                            query: str,
                            subreddit: Optional[str] = None,
                            sort: str = "relevance",
-                           time_filter: str = "week",
+                           time_filter: str = "week",  # 최적화된 기간 적용
                            limit: int = 25) -> Dict[str, Any]:
         """
         Reddit 검색

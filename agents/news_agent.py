@@ -88,11 +88,13 @@ class NewsAgent:
             # API 키가 없으면 모의 데이터 반환
             return await self._get_mock_news(query)
             
-        # 날짜 기본값 설정
+        # 날짜 기본값 설정 - 최적화된 기간 사용
         if not to_date:
             to_date = datetime.now().strftime("%Y-%m-%d")
         if not from_date:
-            from_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+            # PeriodConfig에서 뉴스 최적 기간 가져오기
+            from config.period_config import PeriodConfig
+            from_date = (datetime.now() - timedelta(days=PeriodConfig.NEWS_PERIOD_DAYS)).strftime("%Y-%m-%d")
             
         params = {
             "q": query,
