@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAI - AI 주식 분석 챗봇</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>StockAI</h1>
+            <p>AI 기반 실시간 주식 분석 서비스</p>
+        </header>
+        
+        <div class="chat-container">
+            <div id="chatMessages" class="chat-messages">
+                <!-- 채팅 메시지가 여기에 표시됩니다 -->
+            </div>
+            
+            <div class="chat-input-container">
+                <input 
+                    type="text" 
+                    id="chatInput" 
+                    class="chat-input" 
+                    placeholder="주식에 대해 물어보세요... (예: 삼성전자 주가 분석해줘)"
+                    autofocus
+                >
+                <button id="sendButton" class="send-button">전송</button>
+            </div>
+        </div>
+        
+        <div class="examples">
+            <h3>예시 질문:</h3>
+            <ul>
+                <li>"삼성전자 최근 실적 어때?"</li>
+                <li>"AAPL 주가 전망 알려줘"</li>
+                <li>"테슬라와 리비안 비교해줘"</li>
+                <li>"코스피 시장 분위기는?"</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>

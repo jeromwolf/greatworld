@@ -15,14 +15,22 @@ StockAI는 AI 기반 주식 분석 서비스로, 국내외 주식에 대한 실�
 - 🌍 **글로벌 통합**: 국내(KOSPI/KOSDAQ)와 해외(NYSE/NASDAQ) 주식 통합 분석
 - 📊 **실시간 감성 분석**: Reddit, X(Twitter) 등 SNS 모니터링
 - 🔍 **종합적 분석**: 공시, 뉴스, 재무제표를 한 번에
+- 🎯 **감성 점수 시각화**: -1.0 ~ 1.0 범위의 직관적인 감성 지표
 
 ## 🛠 기술 스택
 
-- **Backend**: Python 3.8+, FastAPI
-- **AI**: Gemini AI, GPT-4
+### Backend
+- **Framework**: Python 3.8+, FastAPI
+- **AI/ML**: Gemini AI, GPT-4 (Optional)
 - **Real-time**: WebSocket
 - **Database**: PostgreSQL, Redis
 - **Architecture**: A2A Multi-Agent System
+
+### Frontend
+- **Vanilla**: HTML/CSS/JavaScript (기본 UI)
+- **Modern**: Next.js 15, TypeScript, Tailwind CSS (고급 UI)
+- **State**: Zustand
+- **WebSocket**: Native WebSocket API
 
 ## 📋 주요 기능
 
@@ -81,24 +89,56 @@ python scripts/init_db.py
 ```
 
 6. 개발 서버 실행
+
+**자동 재시작 스크립트 사용 (권장)**
 ```bash
-uvicorn api.main:app --reload --port 8000
+# 모든 서비스 시작
+./restart.sh
+
+# 개별 서비스 제어
+./restart.sh backend   # 백엔드만
+./restart.sh frontend  # 프론트엔드만
+./restart.sh status    # 상태 확인
+./restart.sh stop      # 모두 중지
 ```
 
-웹 브라우저에서 http://localhost:8000 접속
+**수동 실행**
+```bash
+# Backend (FastAPI) - 포트 8200
+uvicorn api.main:app --reload --port 8200
+
+# Frontend (Next.js) - 포트 3200 (별도 터미널)
+cd stockai-frontend
+npm install
+npm run dev
+```
+
+접속 URL:
+- Next.js UI: http://localhost:3200 (권장)
+- 기본 UI: http://localhost:8200
+- API 문서: http://localhost:8200/docs
 
 ## 📁 프로젝트 구조
 
 ```
 greatworld/
-├── agents/               # AI 에이전트들
-│   ├── nlu_agent.py     # 자연어 이해
-│   ├── dart_agent.py    # 국내 공시 수집
-│   └── sentiment_agent.py # 감성 분석
-├── api/                  # FastAPI 백엔드
-├── frontend/             # 웹 UI
-├── tests/                # 테스트 코드
-└── docs/                 # 문서
+├── agents/                     # AI 에이전트들
+│   ├── simple_nlu_agent.py    # 자연어 이해
+│   ├── dart_agent.py          # 국내 공시 수집
+│   ├── sec_agent.py           # 미국 공시 수집
+│   ├── news_agent.py          # 뉴스 수집
+│   ├── social_agent.py        # SNS 데이터 수집
+│   └── sentiment_agent.py     # 감성 분석 통합
+├── api/                       # FastAPI 백엔드
+│   └── main.py               # WebSocket & REST API
+├── frontend/                  # 기본 웹 UI
+├── stockai-frontend/          # Next.js 모던 UI
+│   ├── app/                  # App Router
+│   ├── components/           # React 컴포넌트
+│   └── types/               # TypeScript 타입
+├── a2a_core/                 # A2A 프로토콜 코어
+├── tests/                    # 테스트 코드
+└── docs/                     # 문서
 ```
 
 ## 🧪 테스트
@@ -118,8 +158,8 @@ mypy .
 ## 📊 API 문서
 
 서버 실행 후 다음 주소에서 API 문서 확인:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: http://localhost:8200/docs
+- ReDoc: http://localhost:8200/redoc
 
 ## 🤝 기여하기
 
