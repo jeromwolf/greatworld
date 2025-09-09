@@ -1,4 +1,4 @@
-# StockAI - AI 기반 주식 분석 서비스
+# StockAI - AI 기반 주식 분석 플랫폼
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+">
@@ -6,31 +6,91 @@
   <img src="https://img.shields.io/badge/license-MIT-orange.svg" alt="License">
 </p>
 
-## 🚀 개요
+A2A 멀티에이전트 시스템을 기반으로 한 실시간 주식 분석 챗봇 서비스
 
-StockAI는 AI 기반 주식 분석 서비스로, 국내외 주식에 대한 실시간 분석을 제공하는 대화형 플랫폼입니다.
+## 🏗️ 프로젝트 구조
 
-### 주요 특징
-- 🤖 **대화형 인터페이스**: 자연어로 질문하면 AI가 즉시 분석
-- 🌍 **글로벌 통합**: 국내(KOSPI/KOSDAQ)와 해외(NYSE/NASDAQ) 주식 통합 분석
-- 📊 **실시간 감성 분석**: Reddit, X(Twitter) 등 SNS 모니터링
-- 🔍 **종합적 분석**: 공시, 뉴스, 재무제표를 한 번에
-- 🎯 **감성 점수 시각화**: -1.0 ~ 1.0 범위의 직관적인 감성 지표
+```
+stock-ai/
+├── agents/                    # A2A 기반 분석 에이전트들
+│   ├── simple_nlu_agent.py   # 자연어 이해
+│   ├── financial_agent.py    # 재무제표 분석
+│   ├── technical_agent.py    # 기술적 분석
+│   ├── sentiment_agent.py    # 감성 분석 통합
+│   └── ...
+├── api/                      # FastAPI 백엔드
+│   ├── main.py              # 메인 API 서버
+│   └── price_streamer.py    # WebSocket 실시간 스트리밍
+├── frontend/                # 웹 인터페이스
+│   ├── responsive.html      # 반응형 메인 UI
+│   └── static/             # CSS/JS 파일들
+├── stockai-frontend/        # Next.js React (참고용)
+├── cache/                   # 캐싱 시스템
+├── utils/                   # 유틸리티 함수들
+├── config/                  # 설정 파일들
+├── docs/                    # 문서들
+├── scripts/                 # 실행 스크립트들
+├── docker/                  # Docker 설정 파일들
+└── tests/                   # 테스트 코드
+```
 
-## 🛠 기술 스택
+## 🚀 빠른 시작
 
-### Backend
-- **Framework**: Python 3.8+, FastAPI
-- **AI/ML**: Gemini AI, GPT-4 (Optional)
-- **Real-time**: WebSocket
-- **Database**: PostgreSQL, Redis
-- **Architecture**: A2A Multi-Agent System
+### 1. 환경 설정
+```bash
+# Python 가상환경 생성 및 활성화
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-### Frontend
-- **Vanilla**: HTML/CSS/JavaScript (기본 UI)
-- **Modern**: Next.js 15, TypeScript, Tailwind CSS (고급 UI)
-- **State**: Zustand
-- **WebSocket**: Native WebSocket API
+# 의존성 설치
+pip install -r requirements.txt
+```
+
+### 2. 환경변수 설정
+```bash
+# .env 파일 생성 (템플릿 복사)
+cp .env.example .env
+
+# API 키 설정 (.env 파일 편집)
+# GEMINI_API_KEY=your_gemini_key
+# OPENAI_API_KEY=your_openai_key
+# DART_API_KEY=your_dart_key
+```
+
+### 3. 서버 실행
+```bash
+# 메인 서버 실행 (권장)
+uvicorn api.main:app --reload --port 8200
+
+# 또는 스크립트 사용
+./scripts/restart.sh
+```
+
+### 4. 접속
+- **메인 UI**: http://localhost:8200
+- **API 문서**: http://localhost:8200/docs
+- Next.js UI (참고용): http://localhost:3200
+
+## 💻 주요 기능
+
+### 🤖 AI 에이전트 시스템
+- **NLU Agent**: 자연어 쿼리 이해 및 의도 분류
+- **Financial Agent**: 재무제표 분석 및 건전성 평가
+- **Technical Agent**: 기술적 지표 계산 (MA, RSI, MACD 등)
+- **Sentiment Agent**: 뉴스/SNS 감성 분석 통합
+- **Price Agent**: 실시간 주가 데이터 수집
+
+### 📊 데이터 소스
+- **실시간 주가**: Yahoo Finance API
+- **공시 데이터**: DART (한국), SEC (미국)
+- **뉴스**: 다양한 뉴스 API
+- **소셜 데이터**: Reddit, StockTwits
+
+### 🎯 핵심 특징
+- **가중치 시스템**: 데이터 소스별 신뢰도 반영
+- **실시간 WebSocket**: 즉시 업데이트되는 분석 결과
+- **반응형 UI**: 모바일/태블릿/데스크톱 완벽 지원
+- **투자 인사이트**: 실행 가능한 투자 전략 제공
 
 ## 📋 주요 기능
 

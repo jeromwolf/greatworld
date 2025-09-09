@@ -1,0 +1,82 @@
+# Docker Compose Override for Development
+# 이 파일은 개발 환경에서 docker-compose.yml과 함께 자동으로 로드됩니다
+
+services:
+  stockai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-builder  # 개발용 스테이지
+    volumes:
+      # 소스 코드 마운트 (hot reload)
+      - ./agents:/app/agents
+      - ./a2a_core:/app/a2a_core
+      - ./api:/app/api
+      - ./frontend:/app/frontend
+      - ./utils:/app/utils
+      - ./cache:/app/cache
+      - ./config:/app/config
+      # 로그 및 데이터
+      - ./logs:/app/logs
+      - ./data:/app/data
+    environment:
+      # 개발 환경 설정
+      APP_ENV: development
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+      # FastAPI 개발 모드
+      RELOAD: "true"
+      # Node.js 개발 모드
+      NODE_ENV: development
+    command: |
+      bash -c "
+        # FastAPI 개발 서버 (hot reload)
+        uvicorn api.main:app --reload --host 0.0.0.0 --port 8200 &
+        
+        # Next.js 개발 서버
+        cd stockai-frontend && npm run dev &
+        
+        # 모든 프로세스 대기
+        wait
+      "
+    
+  # PostgreSQL 개발 설정
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: stockai_dev
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    volumes:
+      # 개발 데이터 영구 저장
+      - ./docker/postgres-data:/var/lib/postgresql/data
+  
+  # Redis 개발 설정
+  redis:
+    ports:
+      - "6379:6379"
+    volumes:
+      # Redis 데이터 영구 저장
+      - ./docker/redis-data:/data
+    command: redis-server --appendonly yes --loglevel debug
+  
+  # 개발용 도구 컨테이너
+  tools:
+    image: python:3.11-slim
+    container_name: stockai-tools
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: tail -f /dev/null
+    networks:
+      - stockai-network
+    environment:
+      PYTHONPATH: /workspace
+
+# 개발용 볼륨 설정 (로컬 디렉토리 사용)
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

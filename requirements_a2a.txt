@@ -4,7 +4,7 @@ uvicorn[standard]==0.24.0
 websockets==12.0
 
 # HTTP Clients & Networking
-httpx==0.25.0
+httpx>=0.27.0
 aiohttp==3.9.1
 
 # Data Models & Validation

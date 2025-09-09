@@ -1,0 +1,99 @@
+services:
+  # PostgreSQL 데이터베이스 (향후 사용 예정)
+  postgres:
+    image: postgres:15-alpine
+    container_name: stockai-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-stockai}
+      POSTGRES_USER: ${DB_USER:-stockai}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stockai123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - stockai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stockai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 캐시 서버 (향후 사용 예정)
+  redis:
+    image: redis:7-alpine
+    container_name: stockai-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - stockai-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # StockAI 메인 애플리케이션
+  stockai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stockai-app
+    env_file:
+      - .env
+    environment:
+      # 데이터베이스 연결 (향후 활성화)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-stockai}
+      DB_USER: ${DB_USER:-stockai}
+      DB_PASSWORD: ${DB_PASSWORD:-stockai123}
+      # Redis 연결 (향후 활성화)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # 애플리케이션 설정
+      PYTHONUNBUFFERED: 1
+      NODE_ENV: production
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    ports:
+      - "80:80"       # Nginx
+      - "8200:8200"   # FastAPI
+      - "3200:3200"   # Next.js
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - stockai-network
+    restart: unless-stopped
+
+  # Nginx 리버스 프록시 (선택사항)
+  nginx:
+    image: nginx:alpine
+    container_name: stockai-nginx
+    volumes:
+      - ./docker/nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "443:443"
+      - "8080:80"
+    depends_on:
+      - stockai
+    networks:
+      - stockai-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  stockai-network:
+    driver: bridge

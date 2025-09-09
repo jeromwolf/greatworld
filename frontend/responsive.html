@@ -487,7 +487,12 @@
         // 메시지 전송
         function sendMessage() {
             const input = document.getElementById('chatInput');
-            const message = input.value.trim();
+            let message = input.value.trim();
+            
+            // 한글 조합 중인 경우 전송하지 않음
+            if (isComposing) {
+                return;
+            }
             
             if (message && ws && ws.readyState === WebSocket.OPEN) {
                 // 사용자 메시지 표시
@@ -643,9 +648,12 @@
             mobileMenu.classList.toggle('active');
         }
         
+        // 한글 입력 상태 추적
+        let isComposing = false;
+        
         // Enter 키 처리
         function handleEnter(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
+            if (event.key === 'Enter' && !event.shiftKey && !isComposing) {
                 event.preventDefault();
                 sendMessage();
             }
@@ -715,6 +723,15 @@
         // DOMContentLoaded 시 한 번만 연결
         document.addEventListener('DOMContentLoaded', () => {
             connectWebSocket();
+            
+            // 한글 입력 이벤트 처리
+            const chatInput = document.getElementById('chatInput');
+            chatInput.addEventListener('compositionstart', () => {
+                isComposing = true;
+            });
+            chatInput.addEventListener('compositionend', () => {
+                isComposing = false;
+            });
         });
     </script>
 </body>

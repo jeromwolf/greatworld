@@ -107,5 +107,15 @@ temp/
 *.tmp
 *.temp
 
+# Next.js frontend
+stockai-frontend/.next/
+stockai-frontend/node_modules/
+stockai-frontend/out/
+stockai-frontend/.env.local
+
+# Docker volumes
+docker/postgres-data/
+docker/redis-data/
+
 # Claude settings (keep local settings)
 .claude/settings.local.json
