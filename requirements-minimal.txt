@@ -1,36 +1,23 @@
-# Core dependencies only
+# 핵심 의존성만 포함 (StockAI NLU 에이전트용)
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-websockets==12.0
-pydantic==2.5.3
 python-dotenv==1.0.0
+pydantic==2.5.3
+dataclasses-json==0.6.3
 
-# Database
-redis==5.0.1
-asyncpg==0.29.0
+# 웹소켓 통신
+websockets==12.0
 
-# AI/ML
-google-generativeai==0.3.2
-openai==1.10.0
-
-# HTTP
-httpx==0.27.0
+# HTTP 클라이언트 (에이전트용)
 aiohttp==3.9.1
 requests==2.31.0
+httpx>=0.27.0
 
-# Data processing
-pandas==2.1.4
-numpy==1.26.3
-beautifulsoup4==4.12.3
-lxml==5.1.0
-
-# Financial APIs
-yfinance==0.2.33
-finnhub-python==2.4.19
-
-# Utils
+# 유틸리티
 python-dateutil==2.8.2
-PyYAML==6.0.1
 
-# NLP (minimal)
-nltk==3.8.1
+# HTML 파싱
+beautifulsoup4==4.12.3
+
+# AI (선택사항)
+# google-generativeai==0.3.2

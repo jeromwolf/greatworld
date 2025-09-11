@@ -12,8 +12,8 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 프로젝트 루트 디렉토리
-PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+# 프로젝트 루트 디렉토리 (scripts 폴더의 상위 디렉토리)
+PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 
 # 로그 함수
 log() {
@@ -65,10 +65,15 @@ restart_backend() {
     source venv/bin/activate
     
     log "FastAPI 서버 시작 (포트: 8200)..."
-    # .env 파일의 환경변수를 명시적으로 export
-    set -a
-    source .env
-    set +a
+    # .env 파일의 환경변수를 명시적으로 export (선택사항)
+    if [ -f "$PROJECT_ROOT/.env" ]; then
+        set -a
+        source "$PROJECT_ROOT/.env"
+        set +a
+        log ".env 파일 로드됨"
+    else
+        warning ".env 파일이 없습니다. 기본 설정으로 실행합니다."
+    fi
     nohup uvicorn api.main:app --reload --port 8200 > logs/backend.log 2>&1 &
     
     sleep 2

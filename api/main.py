@@ -4,6 +4,7 @@ WebSocket을 통한 실시간 채팅 기능 제공
 """
 import os
 import sys
+import asyncio
 from datetime import datetime
 from typing import List, Dict, Any
 import json
@@ -114,7 +115,12 @@ def get_reliability_level(data_source_summary: Dict[str, int]) -> str:
 
 @app.get("/")
 async def root():
-    """메인 페이지 반환"""
+    """메인 페이지 반환 - 대시보드로 변경"""
+    return FileResponse("frontend/dashboard.html")
+
+@app.get("/old")
+async def old_ui():
+    """기존 채팅 UI"""
     return FileResponse("frontend/responsive.html")
 
 @app.get("/chat")
@@ -151,12 +157,20 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         while True:
             # 클라이언트로부터 메시지 수신
             data = await websocket.receive_text()
-            message_data = json.loads(data)
+            
+            # JSON 또는 일반 텍스트 처리
+            try:
+                message_data = json.loads(data)
+                query = message_data.get("message", data)
+            except json.JSONDecodeError:
+                # 일반 텍스트로 처리 (대시보드에서 오는 경우)
+                query = data
             
             # NLU 처리
-            print(f"[WEBSOCKET] Received message: {message_data['message']}")
-            nlu_result = nlu_agent.analyze_query(message_data["message"])
-            print(f"[WEBSOCKET] NLU result: {nlu_result}")
+            print(f"[WEBSOCKET] Received message: {query}", flush=True)
+            nlu_result = nlu_agent.analyze_query(query)
+            print(f"[WEBSOCKET] NLU result intent: {nlu_result.get('intent')}", flush=True)
+            print(f"[WEBSOCKET] NLU entities: {nlu_result.get('entities')}", flush=True)
             
             # 진행 상황 알림
             await manager.send_personal_message(
@@ -170,28 +184,61 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             
             # 분석 실행
             if nlu_result["intent"] == "analyze_stock" and nlu_result["entities"].get("stocks"):
+                print(f"[WEBSOCKET] Starting stock analysis...", flush=True)
                 # 종목 정보 추출
                 stock = nlu_result["entities"]["stocks"][0]
+                print(f"[WEBSOCKET] Stock extracted: {stock}", flush=True)
                 
-                # 한국/미국 주식 구분
-                is_korean = any(char >= '가' and char <= '힣' for char in stock)
+                # 한국 주식명을 영어로 매핑
+                stock_name_map = {
+                    "애플": "AAPL",
+                    "구글": "GOOGL",
+                    "마이크로소프트": "MSFT",
+                    "아마존": "AMZN",
+                    "테슬라": "TSLA",
+                    "엔비디아": "NVDA",
+                    "메타": "META",
+                    "넷플릭스": "NFLX"
+                }
+                
+                # 미국 주식인지 확인 (한글명이 미국 회사를 가리키는 경우)
+                original_stock = stock
+                if stock in stock_name_map:
+                    print(f"[WEBSOCKET] Mapping {stock} to {stock_name_map[stock]}", flush=True)
+                    stock = stock_name_map[stock]
+                    is_korean = False
+                else:
+                    # 한국/미국 주식 구분
+                    is_korean = any(char >= '가' and char <= '힣' for char in stock)
+                print(f"[WEBSOCKET] is_korean: {is_korean}, final stock: {stock}", flush=True)
                 
                 try:
+                    print(f"[WEBSOCKET] Starting data collection...", flush=True)
                     # 병렬로 데이터 수집
                     tasks = []
                     
                     # 주가 데이터 수집 (최우선)
+                    print(f"[WEBSOCKET] Creating PriceAgent...", flush=True)
                     async with PriceAgent() as price_agent:
                         price_task = price_agent.get_stock_price(stock)
                         tasks.append(("price", price_task))
+                        print(f"[WEBSOCKET] Price task added", flush=True)
                     
                     # 뉴스 수집
-                    async with NewsAgent() as news_agent:
-                        if is_korean:
-                            news_task = news_agent.search_korean_news(stock)
-                        else:
-                            news_task = news_agent.search_news(stock, language="en")
-                        tasks.append(("news", news_task))
+                    print(f"[WEBSOCKET] Creating NewsAgent...", flush=True)
+                    try:
+                        async with NewsAgent() as news_agent:
+                            print(f"[WEBSOCKET] NewsAgent created, is_korean={is_korean}", flush=True)
+                            if is_korean:
+                                news_task = news_agent.search_korean_news(stock)
+                            else:
+                                news_task = news_agent.search_news(stock, language="en")
+                            tasks.append(("news", news_task))
+                            print(f"[WEBSOCKET] News task added", flush=True)
+                    except Exception as e:
+                        print(f"[WEBSOCKET ERROR] NewsAgent error: {e}", flush=True)
+                        import traceback
+                        print(f"[WEBSOCKET ERROR] Traceback: {traceback.format_exc()}", flush=True)
                     
                     # 재무 데이터 수집 (한국 주식만)
                     if is_korean:
@@ -264,24 +311,44 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         tasks.append(("dart", get_dart_result()))
                     else:
                         # SEC (미국 공시)
-                        async with SECAgent() as sec_agent:
-                            sec_task = sec_agent.get_recent_filings(stock)
-                            tasks.append(("sec", sec_task))
+                        print(f"[WEBSOCKET] Creating SECAgent for {stock}...", flush=True)
+                        try:
+                            async with SECAgent() as sec_agent:
+                                print(f"[WEBSOCKET] SECAgent created", flush=True)
+                                sec_task = sec_agent.get_major_filings(stock)
+                                tasks.append(("sec", sec_task))
+                                print(f"[WEBSOCKET] SEC task added", flush=True)
+                        except Exception as e:
+                            print(f"[WEBSOCKET ERROR] SECAgent error: {e}", flush=True)
                     
-                    # 소셜 데이터 수집 - API 키가 있을 때만
+                    # 소셜 데이터 수집 - API 키가 있을 때만 (임시 비활성화 - 유효한 키가 없음)
                     reddit_api_key = os.getenv("REDDIT_CLIENT_ID")
-                    if reddit_api_key and not is_korean:
-                        async with SocialAgent() as social_agent:
-                            reddit_task = social_agent.search_reddit(stock)
-                            tasks.append(("reddit", reddit_task))
+                    # 실제 유효한 API 키가 있는지 확인 (placeholder 제외)
+                    if reddit_api_key and reddit_api_key != "your_reddit_client_id_here":
+                        is_valid_reddit_key = True
+                    else:
+                        is_valid_reddit_key = False
+                    
+                    print(f"[WEBSOCKET] Reddit API key valid: {is_valid_reddit_key}, is_korean: {is_korean}", flush=True)
+                    if is_valid_reddit_key and not is_korean:
+                        print(f"[WEBSOCKET] Creating SocialAgent...", flush=True)
+                        try:
+                            async with SocialAgent() as social_agent:
+                                reddit_task = social_agent.search_reddit(stock)
+                                tasks.append(("reddit", reddit_task))
+                                print(f"[WEBSOCKET] Reddit task added", flush=True)
+                        except Exception as e:
+                            print(f"[WEBSOCKET ERROR] SocialAgent error: {e}", flush=True)
                     
                     # 모든 태스크 실행
+                    print(f"[WEBSOCKET] Executing {len(tasks)} tasks...", flush=True)
                     results = {}
                     data_source_summary = {"REAL_DATA": 0, "MOCK_DATA": 0}
                     
                     for name, task in tasks:
+                        print(f"[WEBSOCKET] Executing task: {name}", flush=True)
                         try:
-                            result = await task
+                            result = await asyncio.wait_for(task, timeout=5.0)  # 5초 타임아웃
                             results[name] = result
                             print(f"[{name}] Status: {result.get('status')}, Count: {result.get('count', 0)}, Data source: {result.get('data_source')}")
                             
@@ -289,8 +356,12 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             if result and result.get("data_source"):
                                 data_source_type = result.get("data_source")
                                 data_source_summary[data_source_type] += 1
+                        except asyncio.TimeoutError:
+                            print(f"[{name}] Timeout - using mock data", flush=True)
+                            results[name] = {"status": "timeout", "message": "Request timeout", "data_source": "MOCK_DATA"}
+                            data_source_summary["MOCK_DATA"] += 1
                         except Exception as e:
-                            print(f"Error in {name}: {str(e)}")
+                            print(f"Error in {name}: {str(e)}", flush=True)
                             results[name] = {"status": "error", "message": str(e), "data_source": "MOCK_DATA"}
                             data_source_summary["MOCK_DATA"] += 1
                     
@@ -365,18 +436,55 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             financial_analysis=results.get("financial", {})
                         )
                         
-                        # 분석 결과 전송
-                        response = {
-                            "type": "bot",
-                            "message": analysis_message,
-                            "data": {
-                                "sentiment": sentiment_result.overall_sentiment,
-                                "sources": sentiment_result.data_sources,
-                                "data_source_summary": data_source_summary,
-                                "reliability": get_reliability_level(data_source_summary)
-                            },
-                            "timestamp": datetime.utcnow().isoformat()
+                        # 대시보드용 데이터 형식 추가
+                        # 주가 데이터 추출
+                        price_info = results.get("price", {}).get("price_data", {})
+                        current_price = price_info.get("current_price", 0)
+                        change_percent = price_info.get("change_percent", 0)
+                        
+                        # 가격 포맷팅 (한국 주식은 원화, 미국 주식은 달러)
+                        if is_korean:
+                            price_str = f"₩{current_price:,.0f}" if current_price else "데이터 없음"
+                        else:
+                            price_str = f"${current_price:,.2f}" if current_price else "데이터 없음"
+                        
+                        # 변동률 포맷팅
+                        if change_percent != 0:
+                            change_str = f"{'+' if change_percent > 0 else ''}{change_percent:.2f}%"
+                        else:
+                            change_str = "0.00%"
+                        
+                        dashboard_data = {
+                            "stock_name": original_stock if 'original_stock' in locals() else (nlu_result["entities"]["stocks"][0] if nlu_result["entities"].get("stocks") else query),
+                            "price": price_str,
+                            "change": change_str,
+                            "change_value": change_percent,  # 색상 판단용
+                            "sentiment": sentiment_result.overall_sentiment,
+                            "sentiment_label": sentiment_result.sentiment_label,
+                            "sentiment_reason": sentiment_result.recommendation,
+                            "news": results.get("news", {}).get("articles", [])[:5],
+                            "market_cap": f"₩{price_info.get('market_cap', 0)/1e12:.2f}조" if is_korean and price_info.get('market_cap') 
+                                         else f"${price_info.get('market_cap', 0)/1e12:.2f}T" if price_info.get('market_cap') 
+                                         else "-",
+                            "volume": f"{price_info.get('volume', 0):,}" if price_info.get('volume') else "-",
+                            "per": financial_data.get("per", "-") if financial_data else "-",
+                            "pbr": financial_data.get("pbr", "-") if financial_data else "-",
+                            "roe": financial_data.get("roe", "-") if financial_data else "-",
+                            "high_52w": f"₩{price_info.get('week_52_high', 0):,.0f}" if is_korean and price_info.get('week_52_high')
+                                       else f"${price_info.get('week_52_high', 0):,.2f}" if price_info.get('week_52_high')
+                                       else "-",
+                            "low_52w": f"₩{price_info.get('week_52_low', 0):,.0f}" if is_korean and price_info.get('week_52_low')
+                                      else f"${price_info.get('week_52_low', 0):,.2f}" if price_info.get('week_52_low')
+                                      else "-",
+                            "insights": [
+                                f"감성 점수: {sentiment_result.overall_sentiment:.2f}",
+                                f"데이터 신뢰도: {get_reliability_level(data_source_summary)}",
+                                f"추천: {sentiment_result.recommendation}"
+                            ]
                         }
+                        
+                        # 분석 결과 전송 (대시보드 형식 우선)
+                        response = dashboard_data
                     else:
                         # 데이터 소스 요약 메시지 생성
                         warning_message = ""
@@ -396,7 +504,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 except Exception as e:
                     import traceback
                     print(f"[ERROR] Analysis failed: {str(e)}")
+                    print(f"[ERROR] Error type: {type(e).__name__}")
                     print(f"[ERROR] Traceback: {traceback.format_exc()}")
+                    
+                    # Log to file for debugging
+                    with open("error_debug.log", "a") as f:
+                        f.write(f"\n{'='*50}\n")
+                        f.write(f"Time: {datetime.utcnow()}\n")
+                        f.write(f"Query: {query}\n")
+                        f.write(f"Stock: {stock if 'stock' in locals() else 'N/A'}\n")
+                        f.write(f"Error: {str(e)}\n")
+                        f.write(f"Traceback:\n{traceback.format_exc()}\n")
+                    
                     response = {
                         "type": "bot",
                         "message": f"분석 중 오류가 발생했습니다: {str(e)}",
