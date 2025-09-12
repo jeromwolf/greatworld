@@ -321,37 +321,41 @@ class NewsAgent:
     async def _get_mock_news(self, query: str) -> Dict[str, Any]:
         """API 키 없을 때 모의 뉴스 데이터 반환"""
         mock_articles = [
-            NewsArticle(
-                title=f"{query} Shows Strong Q3 Performance",
-                description=f"{query} reported better-than-expected earnings for Q3 2024",
-                url="https://example.com/news/1",
-                source="Financial Times",
-                published_at=datetime.now().isoformat(),
-                sentiment=0.7
-            ),
-            NewsArticle(
-                title=f"Analysts Upgrade {query} Price Target",
-                description=f"Major investment banks raise price targets for {query}",
-                url="https://example.com/news/2",
-                source="Reuters",
-                published_at=(datetime.now() - timedelta(days=1)).isoformat(),
-                sentiment=0.8
-            ),
-            NewsArticle(
-                title=f"{query} Faces Regulatory Challenges",
-                description=f"Regulators scrutinize {query}'s market practices",
-                url="https://example.com/news/3",
-                source="Bloomberg",
-                published_at=(datetime.now() - timedelta(days=2)).isoformat(),
-                sentiment=-0.3
-            )
+            {
+                "title": f"{query} Shows Strong Q3 Performance",
+                "description": f"{query} reported better-than-expected earnings for Q3 2024",
+                "url": "https://example.com/news/1",
+                "source": "Financial Times",
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "published_at": datetime.now().isoformat(),
+                "sentiment": 0.7
+            },
+            {
+                "title": f"Analysts Upgrade {query} Price Target",
+                "description": f"Major investment banks raise price targets for {query}",
+                "url": "https://example.com/news/2",
+                "source": "Reuters",
+                "date": (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M"),
+                "published_at": (datetime.now() - timedelta(days=1)).isoformat(),
+                "sentiment": 0.8
+            },
+            {
+                "title": f"{query} Faces Regulatory Challenges",
+                "description": f"Regulators scrutinize {query}'s market practices",
+                "url": "https://example.com/news/3",
+                "source": "Bloomberg",
+                "date": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d %H:%M"),
+                "published_at": (datetime.now() - timedelta(days=2)).isoformat(),
+                "sentiment": -0.3
+            }
         ]
         
         return {
             "status": "success",
             "message": "⚠️ 모의 데이터 - NewsAPI 키가 설정되지 않음",
             "total_results": len(mock_articles),
-            "articles": [asdict(article) for article in mock_articles],
+            "count": len(mock_articles),
+            "articles": mock_articles,
             "data_source": "MOCK_DATA"
         }
         

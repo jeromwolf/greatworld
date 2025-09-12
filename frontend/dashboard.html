@@ -760,25 +760,6 @@
                 </div>
             </div>
 
-            <div class="data-section">
-                <h3>📈 기술적 분석</h3>
-                <div id="technicalContainer">
-                    <table class="metrics-table">
-                        <tr>
-                            <td>RSI</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>MACD</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>볼린저밴드</td>
-                            <td>-</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
         </aside>
     </div>
 
@@ -1195,13 +1176,22 @@
 
         // 뉴스 패널 업데이트
         function updateNewsPanel(news) {
-            if (!news) return;
-            
             const container = document.getElementById('newsContainer');
+            
+            if (!news || news.length === 0) {
+                container.innerHTML = `
+                    <div class="news-item">
+                        <div class="news-title" style="color: var(--text-secondary);">뉴스 데이터를 불러올 수 없습니다</div>
+                        <div class="news-meta">데이터 없음</div>
+                    </div>
+                `;
+                return;
+            }
+            
             container.innerHTML = news.map(item => `
                 <div class="news-item">
                     <div class="news-title">${item.title}</div>
-                    <div class="news-meta">${item.source} · ${item.date}</div>
+                    <div class="news-meta">${item.source || '뉴스'} · ${item.date || ''}</div>
                 </div>
             `).join('');
         }
