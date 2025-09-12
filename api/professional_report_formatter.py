@@ -23,7 +23,8 @@ class ProfessionalReportFormatter:
     @staticmethod
     def format_report(company_name: str, sentiment_result, data_source_info: str, 
                      news_data: Dict, dart_data: Dict, financial_data: str = None,
-                     price_data: Dict = None, financial_analysis: Dict = None) -> str:
+                     price_data: Dict = None, financial_analysis: Dict = None,
+                     technical_analysis: Dict = None) -> str:
         """전체 리포트 포맷팅"""
         
         # 데이터 신뢰도 계산
@@ -148,6 +149,57 @@ class ProfessionalReportFormatter:
                 for point in investment_points[:4]:
                     report += f"  {point}\n"
                 report += "\n"
+        
+        # 기술적 분석 섹션
+        if technical_analysis and technical_analysis.get("status") == "success":
+            analysis_data = technical_analysis.get("analysis", {})
+            indicators = analysis_data.get("indicators", {})
+            
+            report += "--------------------------------------------------------------------------------\n"
+            report += f"📈 기술적 분석\n"
+            report += "--------------------------------------------------------------------------------\n"
+            
+            # 매매 신호
+            signal = analysis_data.get("signal", "관망")
+            strength = analysis_data.get("strength", 0.5)
+            trend = analysis_data.get("trend", "횡보")
+            momentum = analysis_data.get("momentum", "중립")
+            
+            signal_emoji = "🟢" if signal == "매수" else "🔴" if signal == "매도" else "🟡"
+            report += f"{signal_emoji} **매매신호**: {signal} (신뢰도: {strength:.0%})\n"
+            report += f"📊 **추세**: {trend} | **모멘텀**: {momentum}\n\n"
+            
+            # 주요 지표
+            report += "📊 주요 기술적 지표\n"
+            if indicators:
+                if indicators.get("rsi"):
+                    rsi_status = "과매수" if indicators["rsi"] > 70 else "과매도" if indicators["rsi"] < 30 else "중립"
+                    report += f"  • RSI: {indicators['rsi']:.1f} ({rsi_status})\n"
+                
+                if indicators.get("macd") and indicators.get("macd_signal"):
+                    macd_trend = "상승" if indicators["macd"] > indicators["macd_signal"] else "하락"
+                    report += f"  • MACD: {indicators['macd']:.2f} ({macd_trend} 모멘텀)\n"
+                
+                # 이동평균선
+                if indicators.get("ma5") and indicators.get("ma20"):
+                    ma_trend = "정배열" if indicators["ma5"] > indicators["ma20"] else "역배열"
+                    report += f"  • 이동평균: 5일({indicators['ma5']:,.0f}) vs 20일({indicators['ma20']:,.0f}) - {ma_trend}\n"
+                
+                # 거래량
+                if indicators.get("volume_ratio"):
+                    volume_status = "급증" if indicators["volume_ratio"] > 2 else "증가" if indicators["volume_ratio"] > 1.2 else "보통"
+                    report += f"  • 거래량: 평균 대비 {indicators['volume_ratio']:.1f}배 ({volume_status})\n"
+            
+            # 지지/저항선
+            key_levels = analysis_data.get("key_levels", {})
+            if key_levels:
+                report += "\n🎯 주요 가격대\n"
+                if key_levels.get("resistance1"):
+                    report += f"  • 1차 저항: {key_levels['resistance1']:,.0f}원\n"
+                if key_levels.get("support1"):
+                    report += f"  • 1차 지지: {key_levels['support1']:,.0f}원\n"
+            
+            report += "\n"
         
         # 공시 및 재무 데이터
         report += "--------------------------------------------------------------------------------\n"

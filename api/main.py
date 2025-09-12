@@ -30,6 +30,7 @@ from agents.social_agent import SocialAgent
 from agents.sentiment_agent import SentimentAgent
 from agents.price_agent import PriceAgent
 from agents.financial_agent import FinancialAgent
+from agents.technical_agent import TechnicalAgent
 from api.professional_report_formatter import ProfessionalReportFormatter
 from config.period_config import PeriodConfig
 
@@ -112,6 +113,20 @@ def get_reliability_level(data_source_summary: Dict[str, int]) -> str:
         return "low"
     else:
         return "none"
+
+async def get_financial_data(corp_code: str):
+    """Helper function to get financial data with proper session management"""
+    try:
+        async with FinancialAgent() as financial_agent:
+            result = await financial_agent.analyze_financial_health(corp_code)
+            return result
+    except Exception as e:
+        print(f"[FINANCIAL ERROR] {str(e)}")
+        return {
+            "status": "error",
+            "data_source": "ERROR",
+            "message": str(e)
+        }
 
 @app.get("/")
 async def root():
@@ -210,6 +225,17 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 else:
                     # 한국/미국 주식 구분
                     is_korean = any(char >= '가' and char <= '힣' for char in stock)
+                    
+                    # 한국 주식 약칭 정규화
+                    if is_korean:
+                        korean_stock_normalization = {
+                            "삼성": "삼성전자",
+                            "LG": "LG에너지솔루션",
+                            "현대": "현대차",
+                            "SK": "SK하이닉스"
+                        }
+                        stock = korean_stock_normalization.get(stock, stock)
+                        
                 print(f"[WEBSOCKET] is_korean: {is_korean}, final stock: {stock}", flush=True)
                 
                 try:
@@ -282,9 +308,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         stock_code_val = stock_code_map.get(stock, None)
                         if stock_code_val and stock_code_val in corp_code_map:
                             corp_code = corp_code_map[stock_code_val]
-                            async with FinancialAgent() as financial_agent:
-                                financial_task = financial_agent.analyze_financial_health(corp_code)
-                                tasks.append(("financial", financial_task))
+                            # Use helper function for proper session management
+                            financial_task = asyncio.create_task(get_financial_data(corp_code))
+                            tasks.append(("financial", financial_task))
+                    
+                    # 기술적 분석 추가
+                    try:
+                        async with TechnicalAgent() as technical_agent:
+                            technical_task = technical_agent.analyze_technical(stock)
+                            tasks.append(("technical", technical_task))
+                            print(f"[WEBSOCKET] Technical analysis task added for {stock}", flush=True)
+                    except Exception as e:
+                        print(f"[WEBSOCKET] Technical agent creation failed: {e}", flush=True)
                     
                     # 공시 데이터 수집
                     if is_korean:
@@ -433,7 +468,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             dart_data=results.get("dart", {}),
                             financial_data=financial_data,
                             price_data=results.get("price", {}),
-                            financial_analysis=results.get("financial", {})
+                            financial_analysis=results.get("financial", {}),
+                            technical_analysis=results.get("technical", {})
                         )
                         
                         # 대시보드용 데이터 형식 추가
@@ -441,6 +477,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         price_info = results.get("price", {}).get("price_data", {})
                         current_price = price_info.get("current_price", 0)
                         change_percent = price_info.get("change_percent", 0)
+                        
+                        # 재무 지표 추출
+                        financial_metrics = results.get("price", {}).get("financial_info", {})
                         
                         # 가격 포맷팅 (한국 주식은 원화, 미국 주식은 달러)
                         if is_korean:
@@ -467,9 +506,13 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                          else f"${price_info.get('market_cap', 0)/1e12:.2f}T" if price_info.get('market_cap') 
                                          else "-",
                             "volume": f"{price_info.get('volume', 0):,}" if price_info.get('volume') else "-",
-                            "per": financial_data.get("per", "-") if financial_data else "-",
-                            "pbr": financial_data.get("pbr", "-") if financial_data else "-",
-                            "roe": financial_data.get("roe", "-") if financial_data else "-",
+                            "per": f"{financial_metrics.get('pe_ratio', 0):.2f}" if financial_metrics.get('pe_ratio') and financial_metrics.get('pe_ratio') > 0 else "-",
+                            "pbr": f"{financial_metrics.get('pb_ratio', 0):.2f}" if financial_metrics.get('pb_ratio') and financial_metrics.get('pb_ratio') > 0 else "-",
+                            "roe": f"{financial_metrics.get('roe', 0):.2f}%" if financial_metrics.get('roe') and financial_metrics.get('roe') > 0 else "-",
+                            "eps": f"{financial_metrics.get('eps', 0):.2f}" if financial_metrics.get('eps') and financial_metrics.get('eps') > 0 else "-",
+                            "dividend_yield": f"{financial_metrics.get('dividend_yield', 0):.2f}%" if financial_metrics.get('dividend_yield') and financial_metrics.get('dividend_yield') > 0 else "-",
+                            "debt_to_equity": f"{financial_metrics.get('debt_to_equity', 0):.2f}" if financial_metrics.get('debt_to_equity') and financial_metrics.get('debt_to_equity') > 0 else "-",
+                            "beta": f"{financial_metrics.get('beta', 0):.2f}" if financial_metrics.get('beta') and financial_metrics.get('beta') > 0 else "-",
                             "high_52w": f"₩{price_info.get('week_52_high', 0):,.0f}" if is_korean and price_info.get('week_52_high')
                                        else f"${price_info.get('week_52_high', 0):,.2f}" if price_info.get('week_52_high')
                                        else "-",
@@ -526,7 +569,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 if nlu_result["intent"] == "analyze_stock":
                     response = {
                         "type": "bot", 
-                        "message": f"**'{message_data['message']}'**에서 종목을 인식하지 못했습니다.\n\n💡 **사용 예시:**\n• 삼성전자 분석해줘\n• SK하이닉스 주가 어때?\n• 더본코리아 최근 실적\n• AAPL 감성분석\n\n📝 **지원 종목:** 국내 주요 종목, 미국 주요 종목\n🔍 **새로운 종목** 요청시 지원 검토하겠습니다.",
+                        "message": f"**'{query}'**에서 종목을 인식하지 못했습니다.\n\n💡 **사용 예시:**\n• 삼성전자 분석해줘\n• SK하이닉스 주가 어때?\n• 더본코리아 최근 실적\n• AAPL 감성분석\n\n📝 **지원 종목:** 국내 주요 종목, 미국 주요 종목\n🔍 **새로운 종목** 요청시 지원 검토하겠습니다.",
                         "data": {
                             "nlu_result": nlu_result,
                             "suggestion": "supported_stocks"
@@ -537,7 +580,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     # 다른 의도 처리
                     response = {
                         "type": "bot",
-                        "message": f"'{message_data['message']}'에 대해 이해했습니다. 현재는 주식 분석 기능만 지원합니다.",
+                        "message": f"'{query}'에 대해 이해했습니다. 현재는 주식 분석 기능만 지원합니다.",
                         "nlu_result": nlu_result,
                         "timestamp": datetime.utcnow().isoformat()
                     }

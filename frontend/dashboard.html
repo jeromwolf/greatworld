@@ -14,6 +14,12 @@
     <!-- 아이콘 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -53,12 +59,84 @@
             z-index: 1000;
         }
 
+        /* 탭 스타일 */
+        .tabs-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--light);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .tabs-container::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tabs-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .tab:hover {
+            background: var(--light);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .tab-close {
+            margin-left: 4px;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .tab-close:hover {
+            opacity: 1;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .tab.active .tab-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
         .header-content {
             max-width: 1600px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 20px;
         }
 
         .logo {
@@ -257,6 +335,27 @@
             transform: translateY(-2px);
         }
 
+        .info-card.loading {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info-card.loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
         .info-card h3 {
             font-size: 16px;
             color: var(--text-secondary);
@@ -293,6 +392,18 @@
         .metrics-table td:last-child {
             text-align: right;
             font-weight: 500;
+        }
+
+        /* 주가 차트 */
+        #stockChart {
+            max-height: 200px;
+            margin-top: 10px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 10px;
         }
 
         /* 감성 분석 바 */
@@ -391,6 +502,47 @@
             font-weight: 600;
         }
 
+        .metric-value.positive {
+            color: #4CAF50;
+        }
+
+        .metric-value.negative {
+            color: #f44336;
+        }
+
+        .metric-value.neutral {
+            color: #FF9800;
+        }
+
+        /* 툴팁 */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
         /* 로딩 상태 */
         .loading {
             text-align: center;
@@ -425,6 +577,32 @@
             background: var(--success);
             animation: pulse 2s infinite;
         }
+        
+        /* PDF 내보내기 버튼 스타일 */
+        .pdf-export-btn:hover {
+            background: #1565C0 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+        }
+        
+        .pdf-export-btn:active {
+            transform: translateY(0);
+        }
+        
+        .pdf-export-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* 날짜 시간 표시 스타일 */
+        .datetime-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+        }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -452,12 +630,41 @@
                 <i class="fas fa-chart-line"></i>
                 <span>StockAI Dashboard</span>
             </div>
-            <div class="header-status">
-                <span class="status-indicator status-online"></span>
-                <span>실시간 연결됨</span>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <!-- 날짜 시간 표시 -->
+                <div class="datetime-display" style="font-size: 14px; color: var(--text-secondary);">
+                    <i class="far fa-calendar-alt"></i>
+                    <span id="currentDateTime">2025년 9월 12일 금요일 오후 2:30</span>
+                </div>
+                <!-- PDF 내보내기 버튼 -->
+                <button id="exportPdfBtn" class="pdf-export-btn" style="
+                    background: var(--primary);
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 14px;
+                    transition: all 0.3s;
+                ">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>PDF 저장</span>
+                </button>
+                <div class="header-status">
+                    <span class="status-indicator status-online"></span>
+                    <span>실시간 연결됨</span>
+                </div>
             </div>
         </div>
     </header>
+
+    <!-- 탭 컨테이너 -->
+    <div class="tabs-container" id="tabsContainer">
+        <!-- 탭이 여기에 동적으로 추가됩니다 -->
+    </div>
 
     <!-- 메인 컨테이너 -->
     <div class="main-container">
@@ -558,6 +765,12 @@
         // WebSocket 연결
         let ws = null;
         const recentSearches = [];
+        
+        // 탭 관리
+        const MAX_TABS = 5;
+        let tabs = [];
+        let activeTabId = null;
+        let tabDataCache = {};
 
         function connectWebSocket() {
             const clientId = 'client_' + Math.random().toString(36).substr(2, 9);
@@ -625,19 +838,141 @@
             `).join('');
         }
 
+        // 차트 리셋
+        function resetChart() {
+            if (stockChart) {
+                stockChart.destroy();
+                stockChart = null;
+            }
+            chartData = [];
+            
+            // 차트 숨기고 플레이스홀더 표시
+            const ctx = document.getElementById('stockChart');
+            const placeholder = document.getElementById('chartPlaceholder');
+            if (ctx) ctx.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+        }
+
         // 로딩 표시
         function showLoading() {
             document.getElementById('contentArea').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
                     <h3>분석 중...</h3>
-                    <p>데이터를 수집하고 있습니다</p>
+                    <p>실시간 데이터를 수집하고 있습니다...</p>
                 </div>
             `;
+            
+            // 기존 차트 리셋
+            resetChart();
+            
+            // 사이드 패널 카드들에 로딩 효과 추가
+            const cards = document.querySelectorAll('.info-card');
+            cards.forEach(card => card.classList.add('loading'));
         }
 
-        // 대시보드 업데이트
-        function updateDashboard(data) {
+        // 탭 관리 함수들
+        function createTab(stockName, data) {
+            if (tabs.length >= MAX_TABS) {
+                alert(`최대 ${MAX_TABS}개의 탭만 열 수 있습니다.`);
+                return;
+            }
+            
+            // 이미 열려있는 탭인지 확인
+            const existingTab = tabs.find(tab => tab.stock === stockName);
+            if (existingTab) {
+                switchToTab(existingTab.id);
+                return;
+            }
+            
+            const tabId = 'tab_' + Date.now();
+            const tab = {
+                id: tabId,
+                stock: stockName,
+                timestamp: new Date()
+            };
+            
+            tabs.push(tab);
+            tabDataCache[tabId] = data;
+            
+            renderTabs();
+            switchToTab(tabId);
+        }
+        
+        function closeTab(tabId, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const index = tabs.findIndex(tab => tab.id === tabId);
+            if (index === -1) return;
+            
+            tabs.splice(index, 1);
+            delete tabDataCache[tabId];
+            
+            // 활성 탭이 닫혔을 경우
+            if (activeTabId === tabId) {
+                if (tabs.length > 0) {
+                    // 인접한 탭으로 전환
+                    const newIndex = Math.min(index, tabs.length - 1);
+                    switchToTab(tabs[newIndex].id);
+                } else {
+                    // 모든 탭이 닫혔을 경우
+                    activeTabId = null;
+                    document.getElementById('contentArea').innerHTML = `
+                        <div style="text-align: center; padding: 50px; color: var(--text-secondary);">
+                            <i class="fas fa-search" style="font-size: 48px; margin-bottom: 20px;"></i>
+                            <h3>주식을 검색해보세요</h3>
+                            <p>최대 5개까지 탭으로 관리할 수 있습니다</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            renderTabs();
+        }
+        
+        function switchToTab(tabId) {
+            activeTabId = tabId;
+            const data = tabDataCache[tabId];
+            if (data) {
+                // 차트 리셋 후 재생성
+                resetChart();
+                updateDashboard(data, false); // false = 새 탭 생성 안함
+            }
+            renderTabs();
+        }
+        
+        function renderTabs() {
+            const container = document.getElementById('tabsContainer');
+            
+            if (tabs.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = tabs.map(tab => `
+                <div class="tab ${tab.id === activeTabId ? 'active' : ''}" 
+                     onclick="switchToTab('${tab.id}')">
+                    <i class="fas fa-chart-line" style="font-size: 12px;"></i>
+                    <span>${tab.stock}</span>
+                    <span class="tab-close" onclick="closeTab('${tab.id}', event)">×</span>
+                </div>
+            `).join('');
+        }
+        
+        // 대시보드 업데이트 (탭 지원 추가)
+        function updateDashboard(data, createNewTab = true) {
+            // 로딩 효과 제거
+            const cards = document.querySelectorAll('.info-card');
+            cards.forEach(card => card.classList.remove('loading'));
+            
+            // 탭 생성 또는 업데이트
+            if (createNewTab && data.stock_name) {
+                createTab(data.stock_name, data);
+                return; // 탭이 자동으로 전환되고 다시 updateDashboard가 호출됨
+            }
+            
             const contentArea = document.getElementById('contentArea');
             
             // 주식 정보 헤더
@@ -665,6 +1000,19 @@
                             <p style="margin-top: 10px; font-size: 14px; color: var(--text-secondary);">
                                 ${data.sentiment_reason || '데이터를 수집하고 있습니다'}
                             </p>
+                        </div>
+                    </div>
+
+                    <!-- 주가 차트 카드 -->
+                    <div class="info-card">
+                        <h3><i class="fas fa-chart-line"></i> 주가 차트</h3>
+                        <div class="info-card-content">
+                            <div id="chartContainer" style="height: 200px;">
+                                <div id="chartPlaceholder" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary); font-size: 14px;">
+                                    주식을 검색하면 실시간 차트가 표시됩니다
+                                </div>
+                                <canvas id="stockChart" width="400" height="200" style="display: none;"></canvas>
+                            </div>
                         </div>
                     </div>
 
@@ -710,6 +1058,18 @@
                                     <td>PBR</td>
                                     <td>${data.pbr || '-'}</td>
                                 </tr>
+                                <tr>
+                                    <td>ROE</td>
+                                    <td>${data.roe || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <td>EPS</td>
+                                    <td>${data.eps || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <td>배당수익률</td>
+                                    <td>${data.dividend_yield || '-'}</td>
+                                </tr>
                             </table>
                         </div>
                     </div>
@@ -729,6 +1089,18 @@
             // 오른쪽 패널 업데이트
             updateNewsPanel(data.news);
             updateMetricsPanel(data);
+            
+            // 차트 초기화 및 업데이트 (데이터가 있을 때만)
+            setTimeout(() => {
+                if (data.price_data && data.price) {
+                    initStockChart();
+                    const currentPrice = parseFloat(data.price.replace(/[₩$,]/g, '') || 0);
+                    if (currentPrice > 0) {
+                        generateInitialChartData(currentPrice);
+                        updateStockChart(data.price_data);
+                    }
+                }
+            }, 100);
         }
 
         // 뉴스 패널 업데이트
@@ -748,19 +1120,60 @@
         function updateMetricsPanel(data) {
             if (!data) return;
 
+            // 메트릭 색상 판단 함수
+            function getMetricClass(label, value) {
+                const numValue = parseFloat(value);
+                if (isNaN(numValue)) return '';
+                
+                switch(label) {
+                    case 'PER':
+                        return numValue < 15 ? 'positive' : numValue > 25 ? 'negative' : 'neutral';
+                    case 'PBR':
+                        return numValue < 1 ? 'positive' : numValue > 3 ? 'negative' : 'neutral';
+                    case 'ROE':
+                        return numValue > 15 ? 'positive' : numValue < 5 ? 'negative' : 'neutral';
+                    case 'EPS':
+                        return numValue > 0 ? 'positive' : 'negative';
+                    case '배당수익률':
+                        return numValue > 3 ? 'positive' : numValue > 1 ? 'neutral' : '';
+                    case '베타':
+                        return numValue < 1 ? 'positive' : numValue > 1.5 ? 'negative' : 'neutral';
+                    case '부채비율':
+                        return numValue < 0.3 ? 'positive' : numValue > 1 ? 'negative' : 'neutral';
+                    default:
+                        return '';
+                }
+            }
+
             // 재무 지표 업데이트
             document.getElementById('metricsContainer').innerHTML = `
                 <div class="metric-item">
-                    <div class="metric-label">PER</div>
-                    <div class="metric-value">${data.per || '-'}</div>
+                    <div class="metric-label tooltip" data-tooltip="주가수익비율: 주가 대비 순이익">PER</div>
+                    <div class="metric-value ${getMetricClass('PER', data.per)}">${data.per || '-'}</div>
                 </div>
                 <div class="metric-item">
-                    <div class="metric-label">PBR</div>
-                    <div class="metric-value">${data.pbr || '-'}</div>
+                    <div class="metric-label tooltip" data-tooltip="주가순자산비율: 주가 대비 순자산">PBR</div>
+                    <div class="metric-value ${getMetricClass('PBR', data.pbr)}">${data.pbr || '-'}</div>
                 </div>
                 <div class="metric-item">
-                    <div class="metric-label">ROE</div>
-                    <div class="metric-value">${data.roe || '-'}</div>
+                    <div class="metric-label tooltip" data-tooltip="자기자본수익률: 투자 대비 수익률">ROE</div>
+                    <div class="metric-value ${getMetricClass('ROE', data.roe)}">${data.roe || '-'}</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label tooltip" data-tooltip="주당순이익: 1주당 얻는 순이익">EPS</div>
+                    <div class="metric-value ${getMetricClass('EPS', data.eps)}">${data.eps || '-'}</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label tooltip" data-tooltip="연간 배당금의 주가 대비 비율">배당수익률</div>
+                    <div class="metric-value ${getMetricClass('배당수익률', data.dividend_yield)}">${data.dividend_yield || '-'}</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label tooltip" data-tooltip="시장 대비 변동성 (1=시장평균)">베타</div>
+                    <div class="metric-value ${getMetricClass('베타', data.beta)}">${data.beta || '-'}</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label tooltip" data-tooltip="총부채 대비 자기자본 비율">부채비율</div>
+                    <div class="metric-value ${getMetricClass('부채비율', data.debt_to_equity)}">${data.debt_to_equity || '-'}</div>
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">시가총액</div>
@@ -769,15 +1182,258 @@
             `;
         }
 
+        // 주가 차트 관련 변수
+        let stockChart = null;
+        let chartData = [];
+
+        // 주가 차트 초기화
+        function initStockChart() {
+            const ctx = document.getElementById('stockChart');
+            const placeholder = document.getElementById('chartPlaceholder');
+            if (!ctx || stockChart) return; // 이미 존재하면 재생성하지 않음
+
+            // 플레이스홀더 숨기고 차트 표시
+            if (placeholder) placeholder.style.display = 'none';
+            ctx.style.display = 'block';
+
+            stockChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '주가',
+                        data: [],
+                        borderColor: '#1976D2',
+                        backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    elements: {
+                        point: {
+                            hoverBackgroundColor: '#1976D2'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 차트 데이터 업데이트
+        function updateStockChart(priceData) {
+            if (!stockChart || !priceData) return;
+
+            // 현재 시간과 가격 추가
+            const now = new Date().toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const currentPrice = priceData.current_price || 0;
+
+            // 데이터 배열에 추가
+            chartData.push({
+                time: now,
+                price: currentPrice
+            });
+
+            // 최대 20개 데이터만 유지
+            if (chartData.length > 20) {
+                chartData.shift();
+            }
+
+            // 차트 업데이트
+            stockChart.data.labels = chartData.map(d => d.time);
+            stockChart.data.datasets[0].data = chartData.map(d => d.price);
+            stockChart.update('none'); // 애니메이션 없이 업데이트
+        }
+
+        // 차트 초기 데이터 생성 (시뮬레이션)
+        function generateInitialChartData(currentPrice) {
+            chartData = [];
+            const basePrice = currentPrice || 50000;
+            
+            for (let i = 19; i >= 0; i--) {
+                const time = new Date(Date.now() - i * 60000).toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const variation = (Math.random() - 0.5) * 0.02; // ±1% 변동
+                const price = basePrice * (1 + variation);
+                
+                chartData.push({
+                    time: time,
+                    price: price
+                });
+            }
+
+            if (stockChart) {
+                stockChart.data.labels = chartData.map(d => d.time);
+                stockChart.data.datasets[0].data = chartData.map(d => d.price);
+                stockChart.update();
+            }
+        }
+
         // Enter 키 이벤트
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 searchStock();
             }
         });
+        
+        // 키보드 단축키
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+W or Cmd+W: 현재 탭 닫기
+            if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+                e.preventDefault();
+                if (activeTabId) {
+                    closeTab(activeTabId);
+                }
+            }
+            
+            // Ctrl+Tab or Cmd+Tab: 다음 탭으로 전환
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
+                e.preventDefault();
+                if (tabs.length > 1) {
+                    const currentIndex = tabs.findIndex(tab => tab.id === activeTabId);
+                    const nextIndex = (currentIndex + 1) % tabs.length;
+                    switchToTab(tabs[nextIndex].id);
+                }
+            }
+            
+            // Ctrl+1~5: 특정 탭으로 이동
+            if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '5') {
+                e.preventDefault();
+                const index = parseInt(e.key) - 1;
+                if (tabs[index]) {
+                    switchToTab(tabs[index].id);
+                }
+            }
+        });
 
+        // 초기 화면 설정
+        document.getElementById('contentArea').innerHTML = `
+            <div style="text-align: center; padding: 50px; color: var(--text-secondary);">
+                <i class="fas fa-search" style="font-size: 48px; margin-bottom: 20px;"></i>
+                <h3>주식을 검색해보세요</h3>
+                <p>최대 5개까지 탭으로 관리할 수 있습니다</p>
+            </div>
+        `;
+        
         // WebSocket 연결 시작
         connectWebSocket();
+        
+        // 날짜/시간 업데이트 함수
+        function updateDateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+            const day = ['일', '월', '화', '수', '목', '금', '토'][now.getDay()];
+            const hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? '오후' : '오전';
+            const displayHours = hours % 12 || 12;
+            
+            const dateTimeString = `${year}년 ${month}월 ${date}일 ${day}요일 ${ampm} ${displayHours}:${minutes}`;
+            document.getElementById('currentDateTime').textContent = dateTimeString;
+        }
+        
+        // 1초마다 날짜/시간 업데이트
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+        
+        // PDF 내보내기 함수
+        document.getElementById('exportPdfBtn').addEventListener('click', async function() {
+            const activeTab = tabs.find(tab => tab.active);
+            if (!activeTab) {
+                alert('분석된 주식이 없습니다. 먼저 주식을 검색해주세요.');
+                return;
+            }
+            
+            // PDF 옵션 설정
+            const opt = {
+                margin: 10,
+                filename: `StockAI_${activeTab.name}_${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            // 버튼 텍스트 변경
+            const exportBtn = document.getElementById('exportPdfBtn');
+            const originalHTML = exportBtn.innerHTML;
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>PDF 생성 중...</span>';
+            exportBtn.disabled = true;
+            
+            try {
+                // 현재 탭의 내용만 선택
+                const element = document.getElementById('mainContent');
+                
+                // 차트를 이미지로 변환
+                const chartCanvas = document.getElementById('stockChart');
+                if (chartCanvas && chartCanvas.chart) {
+                    const chartImage = chartCanvas.toDataURL('image/png');
+                    const img = document.createElement('img');
+                    img.src = chartImage;
+                    img.style.width = '100%';
+                    chartCanvas.style.display = 'none';
+                    chartCanvas.parentNode.insertBefore(img, chartCanvas);
+                }
+                
+                // PDF 생성
+                await html2pdf().set(opt).from(element).save();
+                
+                // 차트 복원
+                if (chartCanvas) {
+                    chartCanvas.style.display = 'block';
+                    const img = chartCanvas.previousSibling;
+                    if (img && img.tagName === 'IMG') {
+                        img.remove();
+                    }
+                }
+            } catch (error) {
+                console.error('PDF 생성 실패:', error);
+                alert('PDF 생성 중 오류가 발생했습니다.');
+            } finally {
+                // 버튼 복원
+                exportBtn.innerHTML = originalHTML;
+                exportBtn.disabled = false;
+            }
+        });
+        
+        // PDF 내보내기 단축키 (Ctrl+P)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                document.getElementById('exportPdfBtn').click();
+            }
+        });
     </script>
 </body>
 </html>

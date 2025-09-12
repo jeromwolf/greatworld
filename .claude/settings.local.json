@@ -32,7 +32,9 @@
       "Bash(cat:*)",
       "Bash(pkill:*)",
       "Bash(timeout 10 python:*)",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(scripts/restart.sh:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

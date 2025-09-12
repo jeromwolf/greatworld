@@ -99,6 +99,20 @@ class PriceAgent:
             # 실시간 가격 정보 (fast_info 사용)
             fast_info = ticker.fast_info
             
+            # 추가 재무 지표 수집
+            financial_info = {
+                'pe_ratio': info.get('trailingPE', info.get('forwardPE', 0)),
+                'pb_ratio': info.get('priceToBook', 0),
+                'dividend_yield': info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0,
+                'roe': info.get('returnOnEquity', 0) * 100 if info.get('returnOnEquity') else 0,
+                'profit_margin': info.get('profitMargins', 0) * 100 if info.get('profitMargins') else 0,
+                'debt_to_equity': info.get('debtToEquity', 0),
+                'current_ratio': info.get('currentRatio', 0),
+                'beta': info.get('beta', 0),
+                'eps': info.get('trailingEps', 0),
+                'book_value': info.get('bookValue', 0)
+            }
+            
             # 주가 데이터 생성
             price_data = StockPrice(
                 symbol=symbol,
@@ -121,7 +135,8 @@ class PriceAgent:
                 "status": "success",
                 "data_source": "REAL_DATA",
                 "stock_name": stock_name,
-                "price_data": asdict(price_data)
+                "price_data": asdict(price_data),
+                "financial_info": financial_info
             }
             
         except Exception as e:
