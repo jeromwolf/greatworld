@@ -35,7 +35,8 @@
       "Bash(pip show:*)",
       "Bash(scripts/restart.sh:*)",
       "Bash(git commit:*)",
-      "Read(//var/folders/h2/yhmybb9n1cn1wn3y141wqv8m0000gn/T/TemporaryItems/NSIRD_screencaptureui_TIqeKP/**)"
+      "Read(//var/folders/h2/yhmybb9n1cn1wn3y141wqv8m0000gn/T/TemporaryItems/NSIRD_screencaptureui_TIqeKP/**)",
+      "Read(//var/folders/h2/yhmybb9n1cn1wn3y141wqv8m0000gn/T/TemporaryItems/NSIRD_screencaptureui_eewlNS/**)"
     ],
     "deny": [],
     "ask": []

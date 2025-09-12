@@ -524,7 +524,16 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 f"감성 점수: {sentiment_result.overall_sentiment:.2f}",
                                 f"데이터 신뢰도: {get_reliability_level(data_source_summary)}",
                                 f"추천: {sentiment_result.recommendation}"
-                            ]
+                            ],
+                            # 기술적 분석 데이터 추가
+                            "rsi": results.get("technical", {}).get("rsi", "-"),
+                            "macd": results.get("technical", {}).get("macd_signal", "-"),
+                            "bollinger": results.get("technical", {}).get("bollinger_band", "-"),
+                            "signal": results.get("technical", {}).get("signal", "중립"),
+                            # 재무 지표 추가
+                            "debt_ratio": financial_metrics.get('debt_to_equity', '-'),
+                            "current_ratio": financial_metrics.get('current_ratio', '-'),
+                            "beta": financial_metrics.get('beta', '-')
                         }
                         
                         # 분석 결과 전송 (대시보드 형식 우선)
