@@ -1098,19 +1098,6 @@
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- 실시간 뉴스 카드 -->
-                        <div class="info-card">
-                            <h3><i class="fas fa-newspaper"></i> 실시간 뉴스</h3>
-                            <div class="info-card-content" style="max-height: 350px; overflow-y: auto;">
-                                ${data.news ? data.news.map((news, idx) => `
-                                    <div style="margin-bottom: 12px; padding-bottom: 12px; ${idx < data.news.length - 1 ? 'border-bottom: 1px solid var(--light);' : ''}">
-                                        <div style="font-weight: 500; margin-bottom: 4px; font-size: 13px; line-height: 1.4;">${news.title}</div>
-                                        <div style="font-size: 11px; color: var(--text-secondary);">${news.source || '뉴스'} · ${news.date || ''}</div>
-                                    </div>
-                                `).join('') : '뉴스를 불러오는 중...'}
-                            </div>
-                        </div>
                     </div>
                 </div>
             `;
