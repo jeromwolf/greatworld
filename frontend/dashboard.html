@@ -1073,20 +1073,15 @@
                                     <span>베타</span>
                                     <span style="font-weight: 600;">${data.beta || '-'}</span>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 기술적 분석 카드 -->
-                        <div class="info-card">
-                            <h3><i class="fas fa-chart-area"></i> 기술적 분석</h3>
-                            <div class="info-card-content">
+                                <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--light);">
+                                <!-- 기술적 분석 항목 추가 -->
                                 <div class="metric-row">
                                     <span>RSI</span>
-                                    <span style="font-weight: 600; font-size: 16px;">${data.rsi || '-'}</span>
+                                    <span style="font-weight: 600;">${data.rsi || '-'}</span>
                                 </div>
                                 <div class="metric-row">
                                     <span>MACD</span>
-                                    <span style="font-weight: 600; font-size: 16px;">${data.macd || '-'}</span>
+                                    <span style="font-weight: 600;">${data.macd || '-'}</span>
                                 </div>
                                 <div class="metric-row">
                                     <span>볼린저밴드</span>
@@ -1096,13 +1091,8 @@
                                     <span>매매신호</span>
                                     <span style="font-weight: 600; color: ${data.signal === '매수' ? 'var(--success)' : data.signal === '매도' ? 'var(--danger)' : 'var(--text-secondary)'};">${data.signal || '중립'}</span>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 재무 지표 카드 -->
-                        <div class="info-card">
-                            <h3><i class="fas fa-coins"></i> 재무 지표</h3>
-                            <div class="info-card-content">
+                                <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--light);">
+                                <!-- 재무 지표 항목 추가 -->
                                 <div class="metric-row">
                                     <span>시가총액</span>
                                     <span style="font-weight: 600;">${data.market_cap || '-'}</span>
