@@ -1064,7 +1064,7 @@
                                 </div>
                                 <div class="metric-row">
                                     <span>볼린저밴드</span>
-                                    <span style="font-weight: 600;">${data.bollinger || '중립'}</span>
+                                    <span style="font-weight: 600;">${data.bollinger_upper && data.bollinger_lower ? `상: ${typeof data.bollinger_upper === 'number' ? data.bollinger_upper.toFixed(2) : data.bollinger_upper}` : '-'}</span>
                                 </div>
                                 <div class="metric-row">
                                     <span>매매신호</span>

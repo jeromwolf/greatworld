@@ -526,10 +526,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 f"추천: {sentiment_result.recommendation}"
                             ],
                             # 기술적 분석 데이터 추가
-                            "rsi": results.get("technical", {}).get("rsi", "-"),
-                            "macd": results.get("technical", {}).get("macd_signal", "-"),
-                            "bollinger": results.get("technical", {}).get("bollinger_band", "-"),
-                            "signal": results.get("technical", {}).get("signal", "중립"),
+                            "rsi": results.get("technical", {}).get("analysis", {}).get("indicators", {}).get("rsi", "-"),
+                            "macd": results.get("technical", {}).get("analysis", {}).get("indicators", {}).get("macd", "-"),
+                            "bollinger_upper": results.get("technical", {}).get("analysis", {}).get("indicators", {}).get("bollinger_upper", "-"),
+                            "bollinger_lower": results.get("technical", {}).get("analysis", {}).get("indicators", {}).get("bollinger_lower", "-"),
+                            "signal": results.get("technical", {}).get("analysis", {}).get("signal", "중립"),
                             # 재무 지표 추가
                             "debt_ratio": financial_metrics.get('debt_to_equity', '-'),
                             "current_ratio": financial_metrics.get('current_ratio', '-'),
