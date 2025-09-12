@@ -1090,14 +1090,20 @@
             updateNewsPanel(data.news);
             updateMetricsPanel(data);
             
-            // 차트 초기화 및 업데이트 (데이터가 있을 때만)
+            // 차트 초기화 및 업데이트 (가격이 있을 때만)
             setTimeout(() => {
-                if (data.price_data && data.price) {
+                if (data.price) {
                     initStockChart();
                     const currentPrice = parseFloat(data.price.replace(/[₩$,]/g, '') || 0);
                     if (currentPrice > 0) {
                         generateInitialChartData(currentPrice);
-                        updateStockChart(data.price_data);
+                        // price_data가 있으면 사용, 없으면 현재 가격만 표시
+                        if (data.price_data) {
+                            updateStockChart(data.price_data);
+                        } else {
+                            // 현재 가격만으로 차트 업데이트
+                            updateStockChart({current_price: currentPrice});
+                        }
                     }
                 }
             }, 100);
@@ -1397,7 +1403,7 @@
                 
                 // 차트를 이미지로 변환
                 const chartCanvas = document.getElementById('stockChart');
-                if (chartCanvas && chartCanvas.chart) {
+                if (chartCanvas && stockChart) {  // stockChart 전역 변수 사용
                     const chartImage = chartCanvas.toDataURL('image/png');
                     const img = document.createElement('img');
                     img.src = chartImage;
@@ -1410,9 +1416,10 @@
                 await html2pdf().set(opt).from(element).save();
                 
                 // 차트 복원
-                if (chartCanvas) {
-                    chartCanvas.style.display = 'block';
-                    const img = chartCanvas.previousSibling;
+                const restoredCanvas = document.getElementById('stockChart');
+                if (restoredCanvas) {
+                    restoredCanvas.style.display = 'block';
+                    const img = restoredCanvas.previousSibling;
                     if (img && img.tagName === 'IMG') {
                         img.remove();
                     }

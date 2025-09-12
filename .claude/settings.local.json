@@ -34,7 +34,8 @@
       "Bash(timeout 10 python:*)",
       "Bash(pip show:*)",
       "Bash(scripts/restart.sh:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Read(//var/folders/h2/yhmybb9n1cn1wn3y141wqv8m0000gn/T/TemporaryItems/NSIRD_screencaptureui_TIqeKP/**)"
     ],
     "deny": [],
     "ask": []

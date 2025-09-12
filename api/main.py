@@ -498,6 +498,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             "price": price_str,
                             "change": change_str,
                             "change_value": change_percent,  # 색상 판단용
+                            "price_data": price_result.get("price_data", {}),  # 차트를 위한 가격 데이터 추가
                             "sentiment": sentiment_result.overall_sentiment,
                             "sentiment_label": sentiment_result.sentiment_label,
                             "sentiment_reason": sentiment_result.recommendation,
