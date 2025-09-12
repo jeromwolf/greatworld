@@ -693,7 +693,7 @@
         <aside class="search-panel">
             <div class="search-section">
                 <input type="text" class="search-input" id="searchInput" placeholder="종목명 또는 티커 입력">
-                <button class="search-btn" onclick="searchStock()">
+                <button class="search-btn" id="searchBtn">
                     <i class="fas fa-search"></i> 분석 시작
                 </button>
             </div>
@@ -816,8 +816,15 @@
 
         // 검색 함수
         function searchStock() {
-            const query = document.getElementById('searchInput').value;
-            if (!query) return;
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim();  // 앞뒤 공백 제거
+            
+            // 빈 문자열 체크
+            if (!query) {
+                alert('종목명 또는 티커를 입력해주세요.');
+                input.focus();
+                return;
+            }
 
             // 최근 검색에 추가
             addToRecentSearches(query);
@@ -828,6 +835,10 @@
             // WebSocket으로 쿼리 전송
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(query);
+                console.log('Sending query:', query);  // 디버깅용
+            } else {
+                console.error('WebSocket is not connected');
+                alert('서버 연결이 끊어졌습니다. 페이지를 새로고침해주세요.');
             }
         }
 
@@ -1378,11 +1389,18 @@
             }
         }
 
-        // Enter 키 이벤트
-        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        // Enter 키 이벤트 (keydown으로 변경하여 더 안정적으로 처리)
+        document.getElementById('searchInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault();  // 기본 동작 방지
                 searchStock();
             }
+        });
+        
+        // 분석 시작 버튼 클릭 이벤트
+        document.getElementById('searchBtn').addEventListener('click', (e) => {
+            e.preventDefault();  // 기본 동작 방지
+            searchStock();
         });
         
         // 키보드 단축키
@@ -1426,6 +1444,9 @@
         
         // WebSocket 연결 시작
         connectWebSocket();
+        
+        // 페이지 로드 시 검색 입력란에 포커스
+        document.getElementById('searchInput').focus();
         
         // 날짜/시간 업데이트 함수
         function updateDateTime() {
