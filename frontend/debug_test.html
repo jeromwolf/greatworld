@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Test</title>
+</head>
+<body>
+    <h1>Debug Test</h1>
+    <input type="text" id="testInput" placeholder="비트코인" value="비트코인">
+    <button onclick="testAPI()">테스트</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const query = document.getElementById('testInput').value;
+            console.log('Testing query:', query);
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: query })
+                });
+
+                const result = await response.json();
+                console.log('API Response:', result);
+
+                document.getElementById('result').innerHTML =
+                    '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML =
+                    '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAI Dashboard - Fixed</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-dot.online {
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .search-btn:hover {
+            background: #5a67d8;
+        }
+
+        .search-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .quick-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .quick-btn {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .result-area {
+            min-height: 400px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .crypto-result {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .crypto-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .crypto-name {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .crypto-price {
+            text-align: right;
+        }
+
+        .price-main {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .price-change {
+            font-size: 18px;
+            margin-top: 5px;
+        }
+
+        .price-up {
+            color: #f44336;
+        }
+
+        .price-down {
+            color: #2196F3;
+        }
+
+        .crypto-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .error {
+            color: #f44336;
+            padding: 20px;
+            background: #ffebee;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .message-log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 4px;
+            margin: 2px 0;
+            background: white;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 StockAI Dashboard</h1>
+            <div class="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">연결 대기중...</span>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="암호화폐 이름 입력 (예: 비트코인, 이더리움)">
+            <button class="search-btn" id="searchBtn" onclick="search()">검색</button>
+        </div>
+
+        <div class="quick-buttons">
+            <div class="quick-btn" onclick="quickSearch('비트코인')">비트코인</div>
+            <div class="quick-btn" onclick="quickSearch('이더리움')">이더리움</div>
+            <div class="quick-btn" onclick="quickSearch('리플')">리플</div>
+            <div class="quick-btn" onclick="quickSearch('솔라나')">솔라나</div>
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <p style="text-align: center; color: #666;">암호화폐를 검색하여 실시간 정보를 확인하세요</p>
+        </div>
+
+        <div class="message-log" id="messageLog">
+            <strong>디버그 로그:</strong>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let ws = null;
+        let isConnecting = false;
+        let messageQueue = [];
+        let currentRequestId = null;
+
+        // 로그 추가 함수
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('messageLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${type.toUpperCase()}: ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            console.log(`[${type}] ${message}`);
+        }
+
+        // WebSocket 연결 함수
+        function connectWebSocket() {
+            if (isConnecting || (ws && ws.readyState === WebSocket.OPEN)) {
+                addLog('이미 연결중이거나 연결된 상태', 'info');
+                return;
+            }
+
+            isConnecting = true;
+            const clientId = 'client_' + Math.random().toString(36).substr(2, 9);
+            const wsUrl = `ws://localhost:8200/ws/${clientId}`;
+
+            addLog(`WebSocket 연결 시도: ${clientId}`, 'info');
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    isConnecting = false;
+                    addLog('WebSocket 연결 성공', 'success');
+                    document.getElementById('statusDot').classList.add('online');
+                    document.getElementById('statusText').textContent = '연결됨';
+
+                    // 큐에 있는 메시지 전송
+                    while (messageQueue.length > 0) {
+                        const msg = messageQueue.shift();
+                        ws.send(msg);
+                        addLog(`큐에서 메시지 전송: ${msg}`, 'info');
+                    }
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addLog(`메시지 수신: ${data.type || 'unknown'}`, 'info');
+
+                        if (data.type === 'system') {
+                            addLog(`시스템: ${data.message}`, 'system');
+                            return;
+                        }
+
+                        // 암호화폐 데이터 처리
+                        if (data.type === 'crypto' || data.crypto_name) {
+                            displayCryptoData(data);
+                        } else if (data.type === 'error') {
+                            displayError(data.message);
+                        }
+                    } catch (e) {
+                        addLog(`메시지 파싱 오류: ${e.message}`, 'error');
+                    }
+                };
+
+                ws.onclose = () => {
+                    isConnecting = false;
+                    ws = null;
+                    addLog('WebSocket 연결 종료', 'warning');
+                    document.getElementById('statusDot').classList.remove('online');
+                    document.getElementById('statusText').textContent = '연결 끊김';
+
+                    // 3초 후 재연결
+                    setTimeout(() => {
+                        addLog('재연결 시도...', 'info');
+                        connectWebSocket();
+                    }, 3000);
+                };
+
+                ws.onerror = (error) => {
+                    isConnecting = false;
+                    addLog(`WebSocket 오류: ${error.message || 'Unknown error'}`, 'error');
+                };
+
+            } catch (e) {
+                isConnecting = false;
+                addLog(`WebSocket 생성 오류: ${e.message}`, 'error');
+            }
+        }
+
+        // 검색 함수
+        function search() {
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim();
+
+            if (!query) {
+                alert('검색어를 입력하세요');
+                return;
+            }
+
+            // 요청 ID 생성
+            currentRequestId = Date.now().toString();
+            addLog(`검색 요청: ${query} (ID: ${currentRequestId})`, 'info');
+
+            // 로딩 표시
+            document.getElementById('resultArea').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>분석 중...</p>
+                </div>
+            `;
+
+            // WebSocket으로 전송
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(query);
+                addLog(`메시지 전송: ${query}`, 'info');
+            } else {
+                // 연결이 없으면 큐에 추가하고 연결 시도
+                messageQueue.push(query);
+                addLog(`메시지 큐에 추가: ${query}`, 'warning');
+                connectWebSocket();
+            }
+        }
+
+        // 빠른 검색
+        function quickSearch(crypto) {
+            document.getElementById('searchInput').value = crypto;
+            search();
+        }
+
+        // 암호화폐 데이터 표시
+        function displayCryptoData(data) {
+            addLog(`암호화폐 데이터 표시: ${data.name}`, 'info');
+
+            const resultArea = document.getElementById('resultArea');
+
+            // 가격 변동 클래스
+            const changeClass = data.change_value > 0 ? 'price-up' : 'price-down';
+            const changeIcon = data.change_value > 0 ? '▲' : '▼';
+
+            resultArea.innerHTML = `
+                <div class="crypto-result">
+                    <div class="crypto-header">
+                        <div>
+                            <div class="crypto-name">${data.name} (${data.symbol})</div>
+                            <div style="color: #666; margin-top: 5px;">시가총액 순위: #${data.market_cap_rank || '-'}</div>
+                        </div>
+                        <div class="crypto-price">
+                            <div class="price-main">${data.price}</div>
+                            <div class="price-change ${changeClass}">
+                                ${changeIcon} ${data.change}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="crypto-details">
+                        <div class="detail-item">
+                            <div class="detail-label">24시간 거래량</div>
+                            <div class="detail-value">₩${(data.volume_24h / 1000000000).toFixed(1)}억</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">24시간 최고</div>
+                            <div class="detail-value">₩${data.high_24h?.toLocaleString() || '-'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">24시간 최저</div>
+                            <div class="detail-value">₩${data.low_24h?.toLocaleString() || '-'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">RSI</div>
+                            <div class="detail-value">${data.technical_signals?.rsi?.toFixed(1) || '-'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">매매신호</div>
+                            <div class="detail-value">${data.technical_signals?.signal || '중립'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">감성점수</div>
+                            <div class="detail-value">${data.sentiment_label || '분석중'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 에러 표시
+        function displayError(message) {
+            addLog(`에러 표시: ${message}`, 'error');
+            document.getElementById('resultArea').innerHTML = `
+                <div class="error">
+                    <i class="fas fa-exclamation-circle" style="font-size: 48px; margin-bottom: 10px;"></i>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Enter 키 처리
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                search();
+            }
+        });
+
+        // 페이지 로드 시 WebSocket 연결
+        window.addEventListener('load', () => {
+            addLog('페이지 로드 완료', 'info');
+            connectWebSocket();
+        });
+
+        // 페이지 언로드 시 정리
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                addLog('페이지 언로드 - WebSocket 종료', 'info');
+                ws.close();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAI - 전문 분석 대시보드</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .pro-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-left: 10px;
+            font-weight: 600;
+        }
+
+        .search-section {
+            margin-bottom: 40px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-btn {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .results-section {
+            min-height: 500px;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .analysis-card {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid #e9ecef;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .price-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+
+        .company-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .current-price {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .price-change {
+            font-size: 20px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        .price-up {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .price-down {
+            color: #2196F3;
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .sentiment-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .sentiment-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .sentiment-positive {
+            background: linear-gradient(90deg, #4caf50, #66bb6a);
+        }
+
+        .sentiment-negative {
+            background: linear-gradient(90deg, #f44336, #ef5350);
+        }
+
+        .news-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s;
+        }
+
+        .news-item:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .news-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .news-source {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f0f0f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px;
+            color: #666;
+        }
+
+        .welcome-message i {
+            font-size: 64px;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            padding: 20px;
+            background: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 12px;
+            color: #c62828;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 StockAI 전문 대시보드</h1>
+            <p>실시간 뉴스, 감성 분석, 기술적 지표를 통한 종합 투자 분석 <span class="pro-badge">PRO</span></p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input
+                    type="text"
+                    class="search-input"
+                    id="searchInput"
+                    placeholder="주식이나 암호화폐 이름을 입력하세요 (예: 삼성전자, 테슬라, 비트코인)"
+                    autocomplete="off"
+                >
+                <button class="search-btn" id="searchBtn" onclick="analyzeQuery()">
+                    <i class="fas fa-chart-area"></i>
+                    전문 분석
+                </button>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="welcome-message">
+                <i class="fas fa-chart-line"></i>
+                <h3>종목을 선택해서 전문 분석을 시작하세요</h3>
+                <p>실시간 뉴스, 감성 지표, 기술적 분석을 한번에 확인할 수 있습니다</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeQuery() {
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim();
+
+            if (!query) {
+                alert('분석할 종목을 입력해주세요');
+                input.focus();
+                return;
+            }
+
+            // 버튼 비활성화
+            const btn = document.getElementById('searchBtn');
+            btn.disabled = true;
+
+            // 로딩 표시
+            document.getElementById('resultsSection').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <h3>전문 분석 중...</h3>
+                    <p>${query}에 대한 실시간 뉴스, 감성 분석, 기술적 지표를 수집하고 있습니다</p>
+                </div>
+            `;
+
+            try {
+                // 먼저 기본 분석 시도
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: query })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    displayAdvancedData(result.data, result.type);
+                } else {
+                    displayError(result.error || '분석에 실패했습니다');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                displayError('서버 연결에 실패했습니다');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function displayAdvancedData(data, type) {
+            const changeClass = data.change_value > 0 ? 'price-up' : 'price-down';
+            const changeIcon = data.change_value > 0 ? '▲' : '▼';
+
+            console.log('Data received:', data, 'Type:', type); // 디버깅용
+
+            let additionalStats = '';
+            let sentimentScore = 0;
+            let sentimentLabel = '중립';
+
+            if (type === 'crypto') {
+                // 암호화폐 데이터 처리
+                sentimentScore = data.sentiment || 0;
+                sentimentLabel = data.sentiment_label || '중립적';
+
+                const volume24h = data.volume_24h ? '₩' + (data.volume_24h / 1000000000).toFixed(1) + '억' : '-';
+                const high24h = data.high_24h ? '₩' + data.high_24h.toLocaleString() : '-';
+                const low24h = data.low_24h ? '₩' + data.low_24h.toLocaleString() : '-';
+
+                additionalStats =
+                    '<div class="stat-item">' +
+                        '<div class="stat-label">시가총액 순위</div>' +
+                        '<div class="stat-value">#' + (data.market_cap_rank || '-') + '</div>' +
+                    '</div>' +
+                    '<div class="stat-item">' +
+                        '<div class="stat-label">24시간 거래량</div>' +
+                        '<div class="stat-value">' + volume24h + '</div>' +
+                    '</div>' +
+                    '<div class="stat-item">' +
+                        '<div class="stat-label">24시간 최고</div>' +
+                        '<div class="stat-value">' + high24h + '</div>' +
+                    '</div>' +
+                    '<div class="stat-item">' +
+                        '<div class="stat-label">24시간 최저</div>' +
+                        '<div class="stat-value">' + low24h + '</div>' +
+                    '</div>';
+            } else {
+                // 주식 데이터 처리
+                sentimentScore = data.sentiment_score || 0;
+                sentimentLabel = data.sentiment_label || '중립';
+
+                const volumeFormatted = data.volume ? (data.volume / 1000000).toFixed(0) + 'M' : '-';
+                const perFormatted = (data.pe_ratio && data.pe_ratio > 0) ? data.pe_ratio.toFixed(1) : '데이터 없음';
+                // 한국 주식 여부 확인 (한글 주식명 또는 .KS 끝남)
+                const isKoreanStock = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(data.name || data.symbol) || (data.symbol && data.symbol.endsWith('.KS'));
+                const high52wFormatted = (data.high_52w && data.high_52w > 0) ? (isKoreanStock ? '₩' + data.high_52w.toLocaleString() : '$' + data.high_52w.toFixed(2)) : '수집 중';
+                const low52wFormatted = (data.low_52w && data.low_52w > 0) ? (isKoreanStock ? '₩' + data.low_52w.toLocaleString() : '$' + data.low_52w.toFixed(2)) : '수집 중';
+
+                additionalStats =
+                    '<div class="stat-item">' +
+                        '<div class="stat-label">거래량</div>' +
+                        '<div class="stat-value">' + volumeFormatted + '</div>' +
+                    '</div>' +
+                    '<div class="stat-item">' +
+                        '<div class="stat-label">PER</div>' +
+                        '<div class="stat-value" style="font-size: 14px;">' + perFormatted + '</div>' +
+                    '</div>' +
+                    '<div class="stat-item">' +
+                        '<div class="stat-label">52주 최고</div>' +
+                        '<div class="stat-value" style="font-size: 14px;">' + high52wFormatted + '</div>' +
+                    '</div>' +
+                    '<div class="stat-item">' +
+                        '<div class="stat-label">52주 최저</div>' +
+                        '<div class="stat-value" style="font-size: 14px;">' + low52wFormatted + '</div>' +
+                    '</div>';
+            }
+
+            // RSI 값과 매매 신호 처리
+            const rsiValue = data.technical_signals?.rsi?.toFixed(1) || '계산 중';
+            const tradingSignal = data.technical_signals?.signal || '분석 중';
+            const analysisText = data.analysis || data.sentiment_reason || (type === 'crypto' ? '암호화폐 시장 분석을 통한 투자 인사이트를 제공합니다' : '종합적인 분석을 통해 투자 인사이트를 제공합니다');
+            const sentimentFillClass = sentimentScore > 0 ? 'sentiment-positive' : 'sentiment-negative';
+            const sentimentWidth = Math.abs(sentimentScore || 0) * 100;
+
+            document.getElementById('resultsSection').innerHTML =
+                '<div class="price-section">' +
+                    '<div class="company-name">' + data.name + '</div>' +
+                    '<div class="current-price">' + data.price + '</div>' +
+                    '<div class="price-change ' + changeClass + '">' +
+                        changeIcon + ' ' + data.change +
+                    '</div>' +
+                    '<div class="stats-grid">' +
+                        '<div class="stat-item">' +
+                            '<div class="stat-label">시가총액</div>' +
+                            '<div class="stat-value">' + formatMarketCap(data.market_cap) + '</div>' +
+                        '</div>' +
+                        additionalStats +
+                        '<div class="stat-item">' +
+                            '<div class="stat-label">심볼</div>' +
+                            '<div class="stat-value">' + data.symbol + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="analysis-grid">' +
+                    '<div class="analysis-card">' +
+                        '<div class="card-title">' +
+                            '<i class="fas fa-heart-pulse"></i>' +
+                            '실시간 감성 분석' +
+                        '</div>' +
+                        '<div class="sentiment-bar">' +
+                            '<div class="sentiment-fill ' + sentimentFillClass + '" style="width: ' + sentimentWidth + '%"></div>' +
+                        '</div>' +
+                        '<p><strong>감성 점수:</strong> ' + (sentimentScore || 0).toFixed(2) + ' (' + sentimentLabel + ')</p>' +
+                        '<p style="margin-top: 10px; font-size: 14px; color: #666;">' +
+                            '실시간 뉴스, SNS, 커뮤니티를 분석한 종합 감성 지표입니다' +
+                        '</p>' +
+                    '</div>' +
+                    '<div class="analysis-card">' +
+                        '<div class="card-title">' +
+                            '<i class="fas fa-chart-line"></i>' +
+                            '기술적 분석' +
+                        '</div>' +
+                        '<div class="stat-item">' +
+                            '<div class="stat-label">RSI</div>' +
+                            '<div class="stat-value">' + rsiValue + '</div>' +
+                        '</div>' +
+                        '<div class="stat-item" style="margin-top: 15px;">' +
+                            '<div class="stat-label">매매 신호</div>' +
+                            '<div class="stat-value">' + tradingSignal + '</div>' +
+                        '</div>' +
+                        '<p style="margin-top: 15px; font-size: 14px; color: #666;">' +
+                            '이동평균선, RSI, MACD 등을 종합한 기술적 분석 결과입니다' +
+                        '</p>' +
+                    '</div>' +
+                    '<div class="analysis-card">' +
+                        '<div class="card-title">' +
+                            '<i class="fas fa-newspaper"></i>' +
+                            '최신 뉴스' +
+                        '</div>' +
+                        '<div class="news-item">' +
+                            '<div class="news-title">실시간 뉴스 분석 중...</div>' +
+                            '<div class="news-source">여러 뉴스 소스에서 수집 중</div>' +
+                        '</div>' +
+                        '<p style="margin-top: 15px; font-size: 14px; color: #666;">' +
+                            '주요 경제 뉴스와 해당 종목 관련 실시간 정보를 분석합니다' +
+                        '</p>' +
+                    '</div>' +
+                    '<div class="analysis-card">' +
+                        '<div class="card-title">' +
+                            '<i class="fas fa-lightbulb"></i>' +
+                            'AI 투자 인사이트' +
+                        '</div>' +
+                        '<p>' + analysisText + '</p>' +
+                        '<div style="margin-top: 15px; font-size: 12px; color: #888;">' +
+                            '분석 시각: ' + new Date().toLocaleString() +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        function formatMarketCap(marketCap) {
+            if (!marketCap || marketCap === 0) {
+                return '-';
+            }
+            if (marketCap > 1000000000000) {
+                return '₩' + (marketCap / 1000000000000).toFixed(1) + '조';
+            } else if (marketCap > 1000000000) {
+                return '₩' + (marketCap / 1000000000).toFixed(0) + '억';
+            } else {
+                return '₩' + marketCap.toLocaleString();
+            }
+        }
+
+        function displayError(message) {
+            document.getElementById('resultsSection').innerHTML =
+                '<div class="error-message">' +
+                    '<i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px;"></i>' +
+                    '<h3>분석 오류</h3>' +
+                    '<p>' + message + '</p>' +
+                '</div>';
+        }
+
+        // Enter 키 처리
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzeQuery();
+            }
+        });
+
+        // 페이지 로드 시 포커스
+        window.addEventListener('load', () => {
+            document.getElementById('searchInput').focus();
+        });
+    </script>
+</body>
+</html>

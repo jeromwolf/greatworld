@@ -745,32 +745,78 @@
     <script>
         // WebSocket 연결
         let ws = null;
+        let reconnectTimer = null;  // 재연결 타이머
         const recentSearches = [];
-        
+
         // 탭 관리
         const MAX_TABS = 5;
         let tabs = [];
         let activeTabId = null;
         let tabDataCache = {};
 
+        // 현재 처리 중인 요청 추적
+        let isProcessing = false;
+        let currentQuery = null;
+
         function connectWebSocket() {
+            // 재연결 타이머가 있으면 취소
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+
+            // 기존 연결이 있으면 먼저 닫기
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                ws.close();
+                ws = null;
+            }
+
             const clientId = 'client_' + Math.random().toString(36).substr(2, 9);
+            console.log('WebSocket 연결 시도:', clientId);
             ws = new WebSocket(`ws://localhost:8200/ws/${clientId}`);
 
             ws.onopen = () => {
-                console.log('WebSocket 연결됨');
+                console.log('WebSocket 연결됨:', clientId);
                 document.querySelector('.status-indicator').classList.add('status-online');
+
+                // 연결 성공 시 처리 상태 초기화
+                isProcessing = false;
+                currentQuery = null;
             };
 
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                console.log('WebSocket 메시지 수신:', data);
+
+                // 시스템 메시지는 무시
+                if (data.type === 'system') {
+                    console.log('시스템 메시지:', data.message);
+                    return;
+                }
+
+                // 분석 결과 처리
+                isProcessing = false;
+                currentQuery = null;
                 updateDashboard(data);
             };
 
             ws.onclose = () => {
                 console.log('WebSocket 연결 끊김');
                 document.querySelector('.status-indicator').classList.remove('status-online');
-                setTimeout(connectWebSocket, 3000);
+                ws = null;  // 연결 변수 초기화
+
+                // 재연결 타이머 설정 (중복 방지)
+                if (!reconnectTimer) {
+                    reconnectTimer = setTimeout(() => {
+                        reconnectTimer = null;
+                        connectWebSocket();
+                    }, 3000);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket 오류:', error);
+                ws = null;
             };
         }
 
@@ -778,11 +824,17 @@
         function searchStock() {
             const input = document.getElementById('searchInput');
             const query = input.value.trim();  // 앞뒤 공백 제거
-            
+
             // 빈 문자열 체크
             if (!query) {
                 alert('종목명 또는 티커를 입력해주세요.');
                 input.focus();
+                return;
+            }
+
+            // 이미 처리 중인 요청이 있으면 무시
+            if (isProcessing) {
+                console.log('이미 요청 처리 중입니다.');
                 return;
             }
 
@@ -792,12 +844,27 @@
             // 로딩 상태 표시
             showLoading();
 
+            // 처리 상태 설정
+            isProcessing = true;
+            currentQuery = query;
+
             // WebSocket으로 쿼리 전송
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(query);
-                console.log('Sending query:', query);  // 디버깅용
+                console.log('Sending query:', query);
+
+                // 10초 후에도 응답이 없으면 처리 상태 초기화
+                setTimeout(() => {
+                    if (isProcessing && currentQuery === query) {
+                        console.log('응답 시간 초과, 재시도 가능');
+                        isProcessing = false;
+                        currentQuery = null;
+                        alert('서버 응답이 없습니다. 다시 시도해주세요.');
+                    }
+                }, 10000);
             } else {
                 console.error('WebSocket is not connected');
+                isProcessing = false;
                 alert('서버 연결이 끊어졌습니다. 페이지를 새로고침해주세요.');
             }
         }
@@ -869,24 +936,26 @@
                 alert(`최대 ${MAX_TABS}개의 탭만 열 수 있습니다.`);
                 return;
             }
-            
+
             // 이미 열려있는 탭인지 확인
             const existingTab = tabs.find(tab => tab.stock === stockName);
             if (existingTab) {
+                // 기존 탭의 데이터를 업데이트하고 전환
+                tabDataCache[existingTab.id] = data;
                 switchToTab(existingTab.id);
                 return;
             }
-            
+
             const tabId = 'tab_' + Date.now();
             const tab = {
                 id: tabId,
                 stock: stockName,
                 timestamp: new Date()
             };
-            
+
             tabs.push(tab);
             tabDataCache[tabId] = data;
-            
+
             renderTabs();
             switchToTab(tabId);
         }
@@ -930,7 +999,8 @@
             if (data) {
                 // 차트 리셋 후 재생성
                 resetChart();
-                updateDashboard(data, false); // false = 새 탭 생성 안함
+                // false를 전달하여 새 탭 생성 방지 - 순환 호출 방지
+                updateDashboard(data, false);
             }
             renderTabs();
         }
@@ -1371,9 +1441,21 @@
             }
         }
 
-        // Enter 키 이벤트 (keydown으로 변경하여 더 안정적으로 처리)
-        document.getElementById('searchInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+        // 한글 입력 상태 추적
+        let isComposing = false;
+        const searchInput = document.getElementById('searchInput');
+        
+        // 한글 IME 이벤트 처리
+        searchInput.addEventListener('compositionstart', () => {
+            isComposing = true;
+        });
+        searchInput.addEventListener('compositionend', () => {
+            isComposing = false;
+        });
+        
+        // Enter 키 이벤트 (한글 조합 상태 고려)
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !isComposing) {
                 e.preventDefault();  // 기본 동작 방지
                 searchStock();
             }
@@ -1424,11 +1506,20 @@
             </div>
         `;
         
-        // WebSocket 연결 시작
-        connectWebSocket();
-        
+        // WebSocket 연결 시작 (중복 방지)
+        if (!ws || ws.readyState === WebSocket.CLOSED) {
+            connectWebSocket();
+        }
+
         // 페이지 로드 시 검색 입력란에 포커스
         document.getElementById('searchInput').focus();
+
+        // 페이지 언로드 시 WebSocket 정리
+        window.addEventListener('beforeunload', () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
+        });
         
         // 날짜/시간 업데이트 함수
         function updateDateTime() {

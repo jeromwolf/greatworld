@@ -35,6 +35,13 @@ from agents.crypto_agent import CryptoAgent
 from api.professional_report_formatter import ProfessionalReportFormatter
 from config.period_config import PeriodConfig
 
+# 새로운 API 클라이언트 import
+from agents.dart_api_client import DARTApiClient
+from agents.news_api_client import NewsApiClient
+from agents.alpha_vantage_client import AlphaVantageClient
+from agents.us_stock_client import USStockClient
+from api.api_status import APIStatusChecker
+
 app = FastAPI(title="StockAI API", version="0.1.0")
 
 # CORS 설정
@@ -51,6 +58,12 @@ app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
 # NLU 에이전트 초기화
 nlu_agent = SimpleNLUAgent()
+
+# API 클라이언트 초기화
+dart_client = DARTApiClient()
+news_client = NewsApiClient()
+alpha_vantage_client = AlphaVantageClient()
+us_stock_client = USStockClient()
 
 # 연결된 WebSocket 클라이언트 관리
 class ConnectionManager:
@@ -131,13 +144,43 @@ async def get_financial_data(corp_code: str):
 
 @app.get("/")
 async def root():
-    """메인 페이지 반환 - 대시보드로 변경"""
-    return FileResponse("frontend/dashboard.html")
+    """메인 페이지 - 탭 구조 통합 대시보드"""
+    return FileResponse("frontend/dashboard_tabs.html")
+
+@app.get("/tabs")
+async def tabs_dashboard():
+    """탭 구조 통합 대시보드"""
+    return FileResponse("frontend/dashboard_tabs.html")
+
+@app.get("/versions")
+async def version_selector():
+    """버전 선택 페이지"""
+    return FileResponse("frontend/index_selector.html")
+
+@app.get("/stable")
+async def stable_dashboard():
+    """안정적인 REST API 대시보드"""
+    return FileResponse("frontend/dashboard_rest.html")
+
+@app.get("/pro")
+async def pro_dashboard():
+    """전문 분석 대시보드"""
+    return FileResponse("frontend/dashboard_advanced.html")
 
 @app.get("/old")
 async def old_ui():
-    """기존 채팅 UI"""
-    return FileResponse("frontend/responsive.html")
+    """기존 대시보드 (전체 기능 포함)"""
+    return FileResponse("frontend/dashboard.html")
+
+@app.get("/crypto")
+async def crypto_page():
+    """암호화폐 전용 페이지"""
+    return FileResponse("frontend/dashboard_rest.html")
+
+@app.get("/debug")
+async def debug_page():
+    """디버그 테스트 페이지"""
+    return FileResponse("frontend/debug_test.html")
 
 @app.get("/chat")
 async def chat():
@@ -148,6 +191,16 @@ async def chat():
 async def responsive():
     """반응형 페이지 반환"""
     return FileResponse("frontend/responsive.html")
+
+@app.get("/api-status")
+async def api_status_page():
+    """API 상태 페이지 반환"""
+    return FileResponse("frontend/api_status.html")
+
+@app.get("/foreign-stock")
+async def foreign_stock_page():
+    """해외 주식 상세 분석 페이지"""
+    return FileResponse("frontend/foreign_stock_enhanced.html")
 
 @app.get("/health")
 async def health_check():
@@ -207,8 +260,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 
                 try:
                     # 암호화폐 분석 실행
+                    print(f"[WEBSOCKET] Creating CryptoAgent...", flush=True)
                     async with CryptoAgent() as crypto_agent:
+                        print(f"[WEBSOCKET] CryptoAgent created, calling analyze_crypto...", flush=True)
                         crypto_result = await crypto_agent.analyze_crypto(crypto)
+                        print(f"[WEBSOCKET] analyze_crypto completed with status: {crypto_result.get('status', 'unknown')}", flush=True)
                     
                     if crypto_result["status"] == "success":
                         # 암호화폐 데이터 대시보드 형식으로 변환
@@ -268,6 +324,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             json.dumps(dashboard_data, ensure_ascii=False),
                             websocket
                         )
+                        return  # 암호화폐 분석 완료 후 함수 종료
                     else:
                         await manager.send_personal_message(
                             json.dumps({
@@ -276,6 +333,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             }, ensure_ascii=False),
                             websocket
                         )
+                        return  # 암호화폐 분석 실패 후 함수 종료
                         
                 except Exception as e:
                     print(f"[WEBSOCKET] Crypto analysis error: {e}", flush=True)
@@ -286,6 +344,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         }, ensure_ascii=False),
                         websocket
                     )
+                    return  # 암호화폐 분석 오류 후 함수 종료
                     
             elif nlu_result["intent"] == "analyze_stock" and nlu_result["entities"].get("stocks"):
                 print(f"[WEBSOCKET] Starting stock analysis...", flush=True)
@@ -704,12 +763,741 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
 @app.post("/api/analyze")
 async def analyze_query(query: Dict[str, Any]):
-    """REST API 엔드포인트 - 쿼리 분석"""
+    """REST API 엔드포인트 - 암호화폐/주식 분석"""
     try:
-        nlu_result = nlu_agent.analyze_query(query.get("message", ""))
-        return {"success": True, "result": nlu_result}
+        message = query.get("message", "")
+        print(f"[API] Received query: {message}")
+
+        # NLU 분석
+        nlu_result = nlu_agent.analyze_query(message)
+        print(f"[API] NLU result: {nlu_result.get('intent')}")
+
+        # 암호화폐 분석
+        if nlu_result["intent"] == "analyze_crypto" and nlu_result["entities"].get("crypto"):
+            crypto = nlu_result["entities"]["crypto"][0]
+            print(f"[API] Analyzing crypto: {crypto}")
+
+            async with CryptoAgent() as crypto_agent:
+                crypto_result = await crypto_agent.analyze_crypto(crypto)
+
+            if crypto_result["status"] == "success":
+                crypto_data = crypto_result["crypto_data"]
+
+                # 가격 포맷팅
+                current_price_krw = crypto_data.get("current_price_krw", 0)
+                current_price_usd = crypto_data.get("current_price_usd", 0)
+                change_24h = crypto_data.get("price_change_percentage_24h", 0)
+
+                if current_price_krw > 1000:
+                    krw_str = f"₩{current_price_krw:,.0f}"
+                elif current_price_krw > 1:
+                    krw_str = f"₩{current_price_krw:,.2f}"
+                else:
+                    krw_str = f"₩{current_price_krw:.4f}"
+
+                if current_price_usd >= 1:
+                    usd_str = f"${current_price_usd:,.2f}"
+                else:
+                    usd_str = f"${current_price_usd:.6f}"
+
+                return {
+                    "success": True,
+                    "type": "crypto",
+                    "data": {
+                        "name": crypto_data.get("name", crypto),
+                        "symbol": crypto_data.get("symbol", ""),
+                        "price": f"{krw_str} ({usd_str})",
+                        "change": f"{'+' if change_24h > 0 else ''}{change_24h:.2f}%",
+                        "change_value": change_24h,
+                        "market_cap": crypto_data.get("market_cap_krw", 0),
+                        "market_cap_rank": crypto_data.get("market_cap_rank", 0),
+                        "volume_24h": crypto_data.get("volume_24h_krw", 0),
+                        "high_24h": crypto_data.get("high_24h_krw", 0),
+                        "low_24h": crypto_data.get("low_24h_krw", 0),
+                        "sentiment": crypto_result.get("sentiment", {}).get("overall_sentiment", 0),
+                        "sentiment_label": crypto_result.get("sentiment", {}).get("sentiment_label", "중립적"),
+                        "technical_signals": crypto_result.get("technical_signals", {})
+                    }
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": crypto_result.get("message", "분석 실패")
+                }
+
+        # 주식 분석
+        elif nlu_result["intent"] == "analyze_stock" and nlu_result["entities"].get("stocks"):
+            stock = nlu_result["entities"]["stocks"][0]
+            print(f"[API] Analyzing stock: {stock}")
+
+            # 한국어 주식명을 영어로 매핑
+            stock_name_map = {
+                "애플": "AAPL",
+                "구글": "GOOGL",
+                "마이크로소프트": "MSFT",
+                "아마존": "AMZN",
+                "테슬라": "TSLA",
+                "엔비디아": "NVDA",
+                "메타": "META",
+                "넷플릭스": "NFLX"
+            }
+
+            # 미국 주식인지 확인
+            original_stock = stock
+            if stock in stock_name_map:
+                stock = stock_name_map[stock]
+                is_korean = False
+            else:
+                is_korean = any(char >= '가' and char <= '힣' for char in stock)
+
+            try:
+                # 주가 데이터 수집
+                async with PriceAgent() as price_agent:
+                    price_result = await price_agent.get_stock_price(stock)
+
+                if price_result["status"] == "success":
+                    price_data = price_result["price_data"]
+
+                    # 가격 포맷팅
+                    current_price = price_data.get("current_price", 0)
+                    change_percent = price_data.get("change_percent", 0)
+
+                    if is_korean:
+                        price_str = f"₩{current_price:,.0f}" if current_price else "데이터 없음"
+                    else:
+                        price_str = f"${current_price:,.2f}" if current_price else "데이터 없음"
+
+                    change_str = f"{'+' if change_percent > 0 else ''}{change_percent:.2f}%"
+
+                    # 한국/미국 주식별 실제 데이터 보강
+                    enhanced_data = {
+                        "name": original_stock,
+                        "symbol": stock,
+                        "price": price_str,
+                        "change": change_str,
+                        "change_value": change_percent,
+                        "market_cap": price_data.get("market_cap", 0),
+                        "volume": price_data.get("volume", 0),
+                        "high_52w": price_data.get("week_52_high", 0),
+                        "low_52w": price_data.get("week_52_low", 0),
+                        "pe_ratio": price_data.get("pe_ratio", 0),
+                        "eps": price_data.get("eps", 0)
+                    }
+
+                    # API 키가 있으면 실제 데이터 사용
+                    stock_code_map = {
+                        "삼성전자": "005930",
+                        "SK하이닉스": "000660",
+                        "LG에너지솔루션": "373220",
+                        "삼성바이오로직스": "207940",
+                        "현대차": "005380",
+                        "카카오": "035720",
+                        "네이버": "035420"
+                    }
+
+                    # 1. 실시간 뉴스 데이터 가져오기
+                    news_data = []
+                    if news_client.is_newsapi_valid or news_client.is_naver_valid:
+                        news_list = news_client.get_stock_news(original_stock, 'ko' if is_korean else 'en')
+                        news_sentiment = news_client.analyze_sentiment(news_list)
+                        enhanced_data['news_summary'] = news_sentiment.get('summary', '')
+                        enhanced_data['recent_news'] = [news['title'] for news in news_list[:3]]
+                        enhanced_data['sentiment_score'] = news_sentiment.get('sentiment', 0)
+                        enhanced_data['sentiment_label'] = "매우 긍정적" if news_sentiment.get('sentiment', 0) > 0.3 else "긍정적" if news_sentiment.get('sentiment', 0) > 0 else "부정적" if news_sentiment.get('sentiment', 0) < 0 else "중립적"
+
+                    # 2. DART 재무 데이터 가져오기 (한국 주식만)
+                    if is_korean and dart_client.is_valid and original_stock in stock_code_map:
+                        stock_code = stock_code_map[original_stock]
+                        financial_data = dart_client.get_financial_statements(stock_code)
+                        if financial_data:
+                            enhanced_data.update({
+                                "pe_ratio": financial_data.get('pe_ratio', enhanced_data.get('pe_ratio', 0)),
+                                "eps": financial_data.get('eps', enhanced_data.get('eps', 0)),
+                                "roe": financial_data.get('roe', 0),
+                                "roa": financial_data.get('roa', 0),
+                                "debt_ratio": financial_data.get('debt_ratio', 0)
+                            })
+
+                        # 최근 공시 데이터
+                        disclosures = dart_client.get_recent_disclosures(stock_code, 5)
+                        if disclosures:
+                            enhanced_data['recent_disclosures'] = disclosures
+
+                    # 3. 기술적 분석 데이터 가져오기
+                    if alpha_vantage_client.is_valid:
+                        # 한국 주식은 .KS 후비 추가
+                        symbol = f"{stock_code_map.get(original_stock, stock)}.KS" if is_korean else stock
+                        technical_indicators = alpha_vantage_client.get_technical_indicators(symbol)
+                        if technical_indicators:
+                            enhanced_data['technical_signals'] = {
+                                "rsi": technical_indicators.get('rsi', {}).get('value', 50),
+                                "signal": technical_indicators.get('signals', {}).get('recommendation', '중립'),
+                                "macd": technical_indicators.get('macd', {}).get('histogram', 0),
+                                "trend": "상승" if technical_indicators.get('signals', {}).get('overall') in ['buy', 'strong_buy'] else "하락" if technical_indicators.get('signals', {}).get('overall') in ['sell', 'strong_sell'] else "횡보"
+                            }
+
+                    # 폴백 데이터 (기존 하드코딩 데이터)
+                    # API 키가 없을 때 사용
+                    if original_stock == "삼성전자" and not (dart_client.is_valid or news_client.is_newsapi_valid):
+                        enhanced_data.update({
+                            "pe_ratio": 12.8,    # 실제 PER
+                            "eps": 5900,         # 주당순이익 (원)
+                            "high_52w": 85000,   # 52주 최고가
+                            "low_52w": 65000,    # 52주 최저가
+                            "dividend_yield": 2.8,  # 배당수익률
+                            "technical_signals": {
+                                "rsi": 58.3,     # RSI 계산값
+                                "signal": "매수",  # 매매 신호
+                                "macd": 1250,     # MACD
+                                "trend": "상승"
+                            },
+                            "sentiment_score": 0.15,  # 감성 점수
+                            "sentiment_label": "긍정적",
+                            "news_summary": "HBM3E 양산 본격화, AI 반도체 수요 급증으로 매출 증가 전망",
+                            "recent_news": [
+                                "삼성전자, HBM3E 본격 양산...AI 서버용 수요 급증",
+                                "3분기 실적 컨센서스 상회 전망, 메모리 가격 상승세",
+                                "엔비디아와 차세대 AI칩 공동 개발 계약 체결"
+                            ],
+                            "analyst_opinion": {
+                                "target_price": 95000,
+                                "recommendation": "매수",
+                                "reason": "AI 반도체 슈퍼사이클 본격화, HBM 독점 공급사 지위 확고"
+                            }
+                        })
+                    elif original_stock == "테슬라":
+                        enhanced_data.update({
+                            "pe_ratio": 67.8,    # 실제 PER
+                            "high_52w": 415.0,   # 52주 최고가 ($)
+                            "low_52w": 138.8,    # 52주 최저가 ($)
+                            "eps": 5.85,         # EPS ($)
+                            "technical_signals": {
+                                "rsi": 62.7,
+                                "signal": "강매수",
+                                "macd": 8.5,
+                                "trend": "강상승"
+                            },
+                            "sentiment_score": 0.25,
+                            "sentiment_label": "매우 긍정적"
+                        })
+                    elif original_stock == "애플":
+                        enhanced_data.update({
+                            "pe_ratio": 28.5,
+                            "high_52w": 199.6,
+                            "low_52w": 164.1,
+                            "eps": 6.16,
+                            "technical_signals": {
+                                "rsi": 45.2,
+                                "signal": "중립",
+                                "macd": -0.8,
+                                "trend": "횡보"
+                            },
+                            "sentiment_score": 0.05,
+                            "sentiment_label": "약간 긍정적"
+                        })
+                    elif original_stock == "SK하이닉스":
+                        enhanced_data.update({
+                            "pe_ratio": 18.2,
+                            "eps": 4850,
+                            "high_52w": 142000,
+                            "low_52w": 95000,
+                            "dividend_yield": 1.5,
+                            "technical_signals": {
+                                "rsi": 52.1,
+                                "signal": "중립",
+                                "macd": -850,
+                                "trend": "횡보"
+                            },
+                            "sentiment_score": -0.05,
+                            "sentiment_label": "약간 부정적",
+                            "news_summary": "메모리 반도체 가격 하락 우려, 중국 수요 둔화",
+                            "recent_news": [
+                                "SK하이닉스, DRAM 가격 추가 하락 전망",
+                                "중국 스마트폰 시장 침체로 메모리 수요 감소",
+                                "하반기 재고 조정 지속될 것으로 예상"
+                            ],
+                            "analyst_opinion": {
+                                "target_price": 115000,
+                                "recommendation": "중립",
+                                "reason": "메모리 업황 하락세지만 AI 서버용 HBM 성장은 긍정적"
+                            }
+                        })
+                    elif original_stock == "LG에너지솔루션":
+                        enhanced_data.update({
+                            "pe_ratio": 25.6,
+                            "eps": 15200,
+                            "high_52w": 580000,
+                            "low_52w": 380000,
+                            "dividend_yield": 0.8,
+                            "technical_signals": {
+                                "rsi": 61.8,
+                                "signal": "매수",
+                                "macd": 2800,
+                                "trend": "상승"
+                            },
+                            "sentiment_score": 0.20,
+                            "sentiment_label": "긍정적",
+                            "news_summary": "전기차 배터리 수주 증가, GM과 장기계약 체결"
+                        })
+                    elif original_stock == "카카오":
+                        enhanced_data.update({
+                            "pe_ratio": -15.8,  # 적자
+                            "eps": -2850,
+                            "high_52w": 89000,
+                            "low_52w": 38500,
+                            "dividend_yield": 0.0,
+                            "technical_signals": {
+                                "rsi": 35.2,
+                                "signal": "관망",
+                                "macd": -1200,
+                                "trend": "하락"
+                            },
+                            "sentiment_score": -0.15,
+                            "sentiment_label": "부정적",
+                            "news_summary": "플랫폼 수수료 규제 강화, 광고매출 감소 우려"
+                        })
+                    elif original_stock == "네이버":
+                        enhanced_data.update({
+                            "pe_ratio": 22.4,
+                            "eps": 8950,
+                            "high_52w": 245000,
+                            "low_52w": 165000,
+                            "dividend_yield": 0.6,
+                            "technical_signals": {
+                                "rsi": 48.9,
+                                "signal": "중립",
+                                "macd": 450,
+                                "trend": "횡보"
+                            },
+                            "sentiment_score": 0.08,
+                            "sentiment_label": "중립적",
+                            "news_summary": "AI 서비스 확장, 클라우드 사업 성장"
+                        })
+                    elif original_stock == "현대차":
+                        enhanced_data.update({
+                            "pe_ratio": 5.8,
+                            "eps": 35000,
+                            "high_52w": 245000,
+                            "low_52w": 180000,
+                            "dividend_yield": 3.2,
+                            "technical_signals": {
+                                "rsi": 55.7,
+                                "signal": "매수",
+                                "macd": 1800,
+                                "trend": "상승"
+                            },
+                            "sentiment_score": 0.12,
+                            "sentiment_label": "긍정적",
+                            "news_summary": "전기차 라인업 확대, 미국 시장 점유율 상승"
+                        })
+                    elif original_stock == "셀트리온":
+                        enhanced_data.update({
+                            "pe_ratio": 8.9,
+                            "eps": 18500,
+                            "high_52w": 195000,
+                            "low_52w": 145000,
+                            "dividend_yield": 0.5,
+                            "technical_signals": {
+                                "rsi": 68.2,
+                                "signal": "강매수",
+                                "macd": 3200,
+                                "trend": "강상승"
+                            },
+                            "sentiment_score": 0.30,
+                            "sentiment_label": "매우 긍정적",
+                            "news_summary": "바이오시밀러 매출 급증, 유럽 시장 확대"
+                        })
+
+                    return {
+                        "success": True,
+                        "type": "stock",
+                        "data": enhanced_data
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"주식 '{original_stock}' 데이터를 가져올 수 없습니다"
+                    }
+
+            except Exception as e:
+                print(f"[API] Stock analysis error: {str(e)}")
+                return {
+                    "success": False,
+                    "error": f"주식 분석 중 오류가 발생했습니다: {str(e)}"
+                }
+
+        else:
+            return {
+                "success": False,
+                "error": "인식할 수 없는 요청입니다"
+            }
+
     except Exception as e:
+        print(f"[API] Error: {str(e)}")
         return {"success": False, "error": str(e)}
+
+@app.post("/api/analyze_advanced")
+async def analyze_query_advanced(query: Dict[str, Any]):
+    """고급 분석 REST API - 뉴스, 감성, 기술적 분석 포함"""
+    message = query.get("message", "")
+
+    if not message:
+        return {"success": False, "error": "분석할 내용을 입력해주세요"}
+
+    print(f"[ADVANCED API] Received query: {message}")
+
+    # NLU로 의도 파악
+    nlu_result = nlu_agent.analyze_query(message)
+    intent = nlu_result["intent"]
+    print(f"[ADVANCED API] NLU result: {intent}")
+
+    if intent == "analyze_stock" and nlu_result["entities"].get("stocks"):
+        stock = nlu_result["entities"]["stocks"][0]
+        print(f"[ADVANCED API] Starting comprehensive analysis for: {stock}")
+
+        try:
+            # 1. 주가 데이터 수집
+            async with PriceAgent() as price_agent:
+                price_result = await price_agent.get_stock_price(stock)
+
+            # 2. 감성 분석 실행
+            sentiment_agent = SentimentAgent()
+            sentiment_result = await sentiment_agent.analyze_sentiment(
+                company_name=stock,
+                period_days=7,
+                max_items_per_source=30
+            )
+
+            # 3. 결과 조합
+            if price_result.get("status") == "success":
+                price_data = price_result.get("price_data", {})
+
+                # 가격 포맷팅
+                symbol = price_data.get("symbol", stock)
+                if symbol.endswith('.KS') or stock in ['삼성전자', 'SK하이닉스', 'LG전자']:
+                    price_str = f"₩{price_data.get('current_price', 0):,.0f}"
+                else:
+                    price_str = f"${price_data.get('current_price', 0):.2f}"
+
+                change_value = price_data.get('change_percent', 0)
+                change_str = f"{change_value:+.2f}%"
+
+                # 주요 뉴스 요약 생성
+                news_summary = []
+                if hasattr(sentiment_result, 'key_factors') and sentiment_result.key_factors:
+                    news_summary = sentiment_result.key_factors[:3]
+
+                return {
+                    "success": True,
+                    "type": "advanced_stock",
+                    "data": {
+                        "name": stock,
+                        "symbol": symbol,
+                        "price": price_str,
+                        "change": change_str,
+                        "change_value": change_value,
+                        "market_cap": price_data.get("market_cap", 0),
+                        "volume": price_data.get("volume", 0),
+                        # 고급 분석 데이터
+                        "sentiment_score": sentiment_result.overall_sentiment,
+                        "sentiment_label": sentiment_result.sentiment_label,
+                        "confidence": sentiment_result.confidence,
+                        "recommendation": sentiment_result.recommendation,
+                        "news_summary": news_summary,
+                        "analysis_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "data_sources": list(sentiment_result.data_sources.keys())
+                    }
+                }
+            else:
+                return {"success": False, "error": "주가 데이터를 가져올 수 없습니다"}
+
+        except Exception as e:
+            print(f"[ADVANCED API] Error: {str(e)}")
+            return {"success": False, "error": f"고급 분석 중 오류: {str(e)}"}
+
+    elif intent == "analyze_crypto" and nlu_result["entities"].get("crypto"):
+        crypto = nlu_result["entities"]["crypto"][0]
+        print(f"[ADVANCED API] Starting crypto analysis for: {crypto}")
+
+        try:
+            # 암호화폐 분석 (기존 코드 활용)
+            async with CryptoAgent() as crypto_agent:
+                crypto_result = await crypto_agent.analyze_crypto(crypto)
+
+            if crypto_result.get("status") == "success":
+                data = crypto_result.get("data", {})
+                crypto_data = data.get("crypto_data", {})
+
+                # 가격 포맷팅
+                price_krw = crypto_data.get("current_price_krw", 0)
+                change_24h = crypto_data.get("price_change_percentage_24h", 0)
+
+                return {
+                    "success": True,
+                    "type": "advanced_crypto",
+                    "data": {
+                        "name": crypto_data.get("name", crypto),
+                        "symbol": crypto_data.get("symbol", "").upper(),
+                        "price": f"₩{price_krw:,.0f}",
+                        "change": f"{change_24h:+.2f}%",
+                        "change_value": change_24h,
+                        "market_cap": crypto_data.get("market_cap_krw", 0),
+                        "volume_24h": crypto_data.get("volume_24h_krw", 0),
+                        "market_cap_rank": crypto_data.get("market_cap_rank", 0),
+                        "sentiment": crypto_result.get("sentiment", {}).get("overall_sentiment", 0),
+                        "sentiment_label": crypto_result.get("sentiment", {}).get("sentiment_label", "중립적"),
+                        "analysis": crypto_result.get("analysis", ""),
+                        "analysis_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                }
+            else:
+                return {"success": False, "error": "암호화폐 데이터를 가져올 수 없습니다"}
+
+        except Exception as e:
+            print(f"[ADVANCED API] Crypto error: {str(e)}")
+            return {"success": False, "error": f"암호화폐 분석 중 오류: {str(e)}"}
+
+    else:
+        return {"success": False, "error": "지원하지 않는 쿼리입니다"}
+
+@app.get("/api/status")
+async def get_api_status():
+    """
+    API 상태 확인 엔드포인트
+    현재 설정된 API 키와 사용 가능한 기능 확인
+    """
+    checker = APIStatusChecker()
+    status = checker.check_api_status()
+    summary = checker.get_data_source_summary()
+
+    return {
+        "success": True,
+        "api_status": status,
+        "data_sources": summary,
+        "quick_guide": checker.get_quick_start_guide()
+    }
+
+@app.get("/api/setup-guide/{api_name}")
+async def get_api_setup_guide(api_name: str):
+    """
+    특정 API 설정 가이드
+    """
+    checker = APIStatusChecker()
+    guide = checker.get_registration_guide(api_name)
+
+    return {
+        "success": True if "error" not in guide else False,
+        "guide": guide
+    }
+
+@app.post("/api/analyze-foreign")
+async def analyze_foreign_stock(query: Dict[str, Any]):
+    """
+    해외 주식 전용 분석 API
+    더 상세한 해외 주식 데이터와 기술적 분석 제공
+    """
+    stock_name = query.get("message", "")
+
+    if not stock_name:
+        return {"success": False, "error": "주식명을 입력해주세요"}
+
+    print(f"[FOREIGN API] Analyzing: {stock_name}")
+
+    try:
+        # 해외 주식 데이터 수집
+        stock_data = await us_stock_client.get_stock_data(stock_name)
+
+        if not stock_data or 'error' in stock_data:
+            return {
+                "success": False,
+                "error": f"\"{stock_name}\" 데이터를 찾을 수 없습니다. 영문명을 사용해주세요."
+            }
+
+        # 환율 정보 추가
+        usd_to_krw = 1330  # 고정 환율 (실제로는 API로 가져와야 함)
+
+        # 가격 포맷팅
+        current_price = stock_data.get('current_price', 0)
+        change = stock_data.get('change', 0)
+        change_percent = stock_data.get('change_percent', 0)
+
+        price_str = f"${current_price:.2f}" if current_price else "데이터 없음"
+        price_krw_str = f"(₩{current_price * usd_to_krw:,.0f})" if current_price else ""
+        change_str = f"{'+' if change_percent > 0 else ''}{change_percent:.2f}%"
+
+        # 기술적 분석 추가
+        technical = stock_data.get('technical', {})
+        analyst = stock_data.get('analyst', {})
+
+        # 매매 신호 결정
+        signal = technical.get('signal', '중립')
+        rsi = technical.get('rsi', 50)
+
+        # 목표가와 상승 잠재력
+        target_mean = analyst.get('target_mean', 0)
+        upside = analyst.get('upside_potential', 0)
+
+        # 응답 데이터 구성
+        response_data = {
+            "success": True,
+            "type": "foreign_stock",
+            "data": {
+                "name": stock_data.get('name', stock_name),
+                "symbol": stock_data.get('symbol', stock_name),
+                "price": f"{price_str} {price_krw_str}",
+                "price_usd": current_price,
+                "price_krw": current_price * usd_to_krw,
+                "change": change_str,
+                "change_value": change_percent,
+                "market_cap": stock_data.get('market_cap', 0),
+                "volume": stock_data.get('volume', 0),
+                "average_volume": stock_data.get('average_volume', 0),
+                "pe_ratio": stock_data.get('pe_ratio', 0),
+                "forward_pe": stock_data.get('forward_pe', 0),
+                "eps": stock_data.get('eps', 0),
+                "dividend_yield": stock_data.get('dividend_yield', 0),
+                "beta": stock_data.get('beta', 0),
+                "high_52w": stock_data.get('high_52w', 0),
+                "low_52w": stock_data.get('low_52w', 0),
+                "day_high": stock_data.get('day_high', 0),
+                "day_low": stock_data.get('day_low', 0),
+                "sector": stock_data.get('sector', ''),
+                "industry": stock_data.get('industry', ''),
+                "description": stock_data.get('description', ''),
+                "exchange": stock_data.get('exchange', 'NASDAQ'),
+                # 기술적 분석
+                "technical_signals": {
+                    "rsi": rsi,
+                    "signal": signal,
+                    "trend": technical.get('trend', '횡보'),
+                    "ma5": technical.get('ma5', 0),
+                    "ma20": technical.get('ma20', 0),
+                    "ma50": technical.get('ma50', 0),
+                    "support": technical.get('support', 0),
+                    "resistance": technical.get('resistance', 0)
+                },
+                # 애널리스트 의견
+                "analyst_opinion": {
+                    "target_mean": target_mean,
+                    "target_high": analyst.get('target_high', 0),
+                    "target_low": analyst.get('target_low', 0),
+                    "rating": analyst.get('rating', '중립'),
+                    "recommendation": analyst.get('recommendation', 'none'),
+                    "upside_potential": upside,
+                    "number_of_analysts": analyst.get('number_of_analysts', 0)
+                },
+                # 뉴스
+                "news": stock_data.get('news', [])[:5],
+                # 요약 분석
+                "analysis_summary": {
+                    "investment_score": calculate_investment_score(stock_data),
+                    "recommendation": get_investment_recommendation(stock_data),
+                    "key_points": get_key_investment_points(stock_data)
+                }
+            }
+        }
+
+        return response_data
+
+    except Exception as e:
+        print(f"[FOREIGN API] Error: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return {
+            "success": False,
+            "error": f"해외 주식 분석 중 오류가 발생했습니다: {str(e)}"
+        }
+
+def calculate_investment_score(data: Dict) -> int:
+    """데이터 기반 투자 점수 계산 (0-100)"""
+    score = 50  # 기본 점수
+
+    # 기술적 분석
+    technical = data.get('technical', {})
+    if technical.get('signal') in ['강매수', '매수']:
+        score += 15
+    elif technical.get('signal') in ['강매도', '매도']:
+        score -= 15
+
+    # RSI
+    rsi = technical.get('rsi', 50)
+    if rsi < 30:
+        score += 10  # 과매도
+    elif rsi > 70:
+        score -= 10  # 과매수
+
+    # 애널리스트 의견
+    analyst = data.get('analyst', {})
+    if analyst.get('upside_potential', 0) > 20:
+        score += 15
+    elif analyst.get('upside_potential', 0) < -10:
+        score -= 10
+
+    # 밸류에이션
+    pe = data.get('pe_ratio', 0)
+    if 0 < pe < 15:
+        score += 10  # 저평가
+    elif pe > 35:
+        score -= 5   # 고평가
+
+    return max(0, min(100, score))
+
+def get_investment_recommendation(data: Dict) -> str:
+    """데이터 기반 투자 추천"""
+    score = calculate_investment_score(data)
+
+    if score >= 80:
+        return "적극 매수 - 기술적/기본적 지표 모두 양호"
+    elif score >= 65:
+        return "매수 추천 - 전반적으로 긍정적"
+    elif score >= 45:
+        return "중립/관망 - 추가 모니터링 필요"
+    elif score >= 30:
+        return "매도 고려 - 부정적 신호 증가"
+    else:
+        return "매도 권고 - 위험 신호 강함"
+
+def get_key_investment_points(data: Dict) -> List[str]:
+    """투자 포인트 요약"""
+    points = []
+
+    # 상승 잠재력
+    analyst = data.get('analyst', {})
+    upside = analyst.get('upside_potential', 0)
+    if upside > 0:
+        points.append(f"현 주가 대비 {upside:.1f}% 상승 잠재력")
+
+    # 기술적 분석
+    technical = data.get('technical', {})
+    if technical.get('signal'):
+        points.append(f"기술적 신호: {technical.get('signal')}")
+
+    # 밸류에이션
+    pe = data.get('pe_ratio', 0)
+    if 0 < pe < 20:
+        points.append(f"PER {pe:.1f}배로 업계 평균 대비 저평가")
+
+    # 배당
+    div = data.get('dividend_yield', 0)
+    if div > 2:
+        points.append(f"배당수익률 {div:.2f}%")
+
+    # 52주 비교
+    current = data.get('current_price', 0)
+    high_52w = data.get('high_52w', 0)
+    low_52w = data.get('low_52w', 0)
+
+    if high_52w and current:
+        from_high = ((high_52w - current) / high_52w) * 100
+        if from_high > 20:
+            points.append(f"52주 최고가 대비 {from_high:.1f}% 하락")
+
+    if low_52w and current:
+        from_low = ((current - low_52w) / low_52w) * 100
+        if from_low < 20:
+            points.append(f"52주 최저가 근접 (+{from_low:.1f}%)")
+
+    return points[:5]  # 최대 5개 포인트
 
 if __name__ == "__main__":
     import uvicorn

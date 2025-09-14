@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAI - 선택화면</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 50px;
+        }
+
+        .version-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .version-card {
+            background: #f8f9fa;
+            border: 3px solid transparent;
+            border-radius: 16px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .version-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+            text-decoration: none;
+        }
+
+        .version-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .version-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .version-description {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .version-features {
+            text-align: left;
+        }
+
+        .version-features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .version-features li {
+            padding: 6px 0;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .version-features li:before {
+            content: "✓";
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .recommended-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ff4757;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .stable-badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .beta-badge {
+            display: inline-block;
+            background: #ff9500;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .card-wrapper {
+            position: relative;
+        }
+
+        .footer-info {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+            color: #888;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 StockAI</h1>
+            <p>AI 기반 주식 & 암호화폐 분석 플랫폼</p>
+        </div>
+
+        <div class="version-cards">
+            <div class="card-wrapper">
+                <div class="recommended-badge">권장</div>
+                <a href="/stable" class="version-card">
+                    <div class="version-icon">⚡</div>
+                    <div class="version-title">
+                        빠른 분석
+                        <span class="stable-badge">안정적</span>
+                    </div>
+                    <div class="version-description">
+                        REST API 기반 안정적인 분석 서비스<br/>
+                        연결 문제 없이 빠른 결과 제공
+                    </div>
+                    <div class="version-features">
+                        <ul>
+                            <li>암호화폐 실시간 분석 (비트코인, 이더리움 등)</li>
+                            <li>주식 분석 (삼성전자, 테슬라, 애플 등)</li>
+                            <li>100% 안정적인 연결</li>
+                            <li>빠른 응답 속도</li>
+                        </ul>
+                    </div>
+                </a>
+            </div>
+
+            <a href="/pro" class="version-card">
+                <div class="version-icon">📊</div>
+                <div class="version-title">
+                    전문 분석
+                    <span style="background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px;">PRO</span>
+                </div>
+                <div class="version-description">
+                    실시간 뉴스, 감성 분석, 기술적 지표<br/>
+                    전문 투자자를 위한 종합 분석
+                </div>
+                <div class="version-features">
+                    <ul>
+                        <li>실시간 감성 분석 (뉴스, SNS 종합)</li>
+                        <li>기술적 지표 (RSI, MACD, 이동평균)</li>
+                        <li>AI 투자 인사이트</li>
+                        <li>전문가급 분석 리포트</li>
+                    </ul>
+                </div>
+            </a>
+
+            <a href="/old" class="version-card">
+                <div class="version-icon">🔄</div>
+                <div class="version-title">
+                    실시간 채팅
+                    <span class="beta-badge">베타</span>
+                </div>
+                <div class="version-description">
+                    WebSocket 기반 실시간 대화형 분석<br/>
+                    모든 기능이 포함된 완전 버전
+                </div>
+                <div class="version-features">
+                    <ul>
+                        <li>실시간 WebSocket 연결</li>
+                        <li>대화형 AI 채팅 인터페이스</li>
+                        <li>고급 탭 기능</li>
+                        <li>전체 분석 도구</li>
+                    </ul>
+                </div>
+            </a>
+        </div>
+
+        <div class="footer-info">
+            <p>
+                <strong>추천:</strong> 안정적인 분석이 필요하시면 <strong>"빠른 분석"</strong>을 선택하세요.<br/>
+                실시간 채팅 기능을 원하시면 "실시간 채팅"을 선택하세요.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

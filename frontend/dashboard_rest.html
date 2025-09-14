@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAI - REST API Dashboard</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .search-section {
+            margin-bottom: 40px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-btn {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .search-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .quick-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-btn {
+            padding: 10px 20px;
+            background: #f5f5f5;
+            border: 2px solid transparent;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .quick-btn:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .results-section {
+            min-height: 400px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f0f0f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .crypto-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 30px;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .crypto-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .crypto-info h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .crypto-symbol {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .crypto-rank {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .crypto-price-section {
+            text-align: right;
+        }
+
+        .crypto-price {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .price-change {
+            font-size: 18px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .price-up {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .price-down {
+            color: #2196F3;
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        .crypto-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-item {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 12px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .error-message {
+            padding: 20px;
+            background: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 12px;
+            color: #c62828;
+            text-align: center;
+        }
+
+        .success-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .history-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .history-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #666;
+        }
+
+        .history-items {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .history-item {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .history-item:hover {
+            background: #e0e0e0;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px;
+            color: #666;
+        }
+
+        .welcome-message i {
+            font-size: 64px;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 StockAI Dashboard</h1>
+            <p>REST API 기반 실시간 암호화폐 분석 <span class="success-badge">안정적</span></p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input
+                    type="text"
+                    class="search-input"
+                    id="searchInput"
+                    placeholder="암호화폐나 주식 이름을 입력하세요 (예: 비트코인, 테슬라, 삼성전자)"
+                    autocomplete="off"
+                >
+                <button class="search-btn" id="searchBtn" onclick="analyzeQuery()">
+                    <i class="fas fa-search"></i>
+                    <span>분석하기</span>
+                </button>
+            </div>
+
+            <div class="quick-buttons">
+                <button class="quick-btn" onclick="quickSearch('비트코인')">
+                    <i class="fab fa-bitcoin"></i> 비트코인
+                </button>
+                <button class="quick-btn" onclick="quickSearch('이더리움')">
+                    <i class="fab fa-ethereum"></i> 이더리움
+                </button>
+                <button class="quick-btn" onclick="quickSearch('리플')">리플</button>
+                <button class="quick-btn" onclick="quickSearch('테슬라')">🚗 테슬라</button>
+                <button class="quick-btn" onclick="quickSearch('삼성전자')">📱 삼성전자</button>
+                <button class="quick-btn" onclick="quickSearch('애플')">🍎 애플</button>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="welcome-message">
+                <i class="fas fa-chart-line"></i>
+                <h3>암호화폐와 주식을 검색해보세요</h3>
+                <p>실시간 가격, 기술적 분석, 감성 분석을 한번에 확인할 수 있습니다</p>
+            </div>
+        </div>
+
+        <div class="history-section" id="historySection" style="display: none;">
+            <div class="history-title">최근 검색</div>
+            <div class="history-items" id="historyItems"></div>
+        </div>
+    </div>
+
+    <script>
+        // 52주 최고/최저가 포맷팅 함수
+        function formatPrice52w(price, name) {
+            if (!price || price === 0) return '-';
+            // 한국 주식 여부 확인 (한글 포함)
+            const isKoreanStock = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(name);
+            if (isKoreanStock) {
+                return '₩' + price.toLocaleString();
+            } else {
+                return '$' + price.toFixed(2);
+            }
+        }
+
+        // 검색 히스토리
+        let searchHistory = [];
+
+        // 검색 함수
+        async function analyzeQuery() {
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim();
+
+            if (!query) {
+                alert('검색어를 입력해주세요');
+                input.focus();
+                return;
+            }
+
+            // 버튼 비활성화
+            const btn = document.getElementById('searchBtn');
+            btn.disabled = true;
+
+            // 로딩 표시
+            document.getElementById('resultsSection').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <h3>분석 중...</h3>
+                    <p>${query} 데이터를 수집하고 있습니다</p>
+                </div>
+            `;
+
+            try {
+                // REST API 호출
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: query })
+                });
+
+                const result = await response.json();
+                console.log('API Response:', result);
+
+                if (result.success) {
+                    if (result.type === 'crypto') {
+                        displayCryptoData(result.data);
+                    } else if (result.type === 'stock') {
+                        displayStockData(result.data);
+                    }
+                    addToHistory(query);
+                } else {
+                    displayError(result.error || '분석에 실패했습니다');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                displayError('서버 연결에 실패했습니다');
+            } finally {
+                // 버튼 활성화
+                btn.disabled = false;
+            }
+        }
+
+        // 주식 데이터 표시
+        function displayStockData(data) {
+            const changeClass = data.change_value > 0 ? 'price-up' : 'price-down';
+            const changeIcon = data.change_value > 0 ? '▲' : '▼';
+            const marketCapDisplay = (data.market_cap / 1000000000000).toFixed(1) + '조원';
+            const volumeDisplay = (data.volume / 1000000).toFixed(0) + '만주';
+
+            document.getElementById('resultsSection').innerHTML = `
+                <div class="crypto-card">
+                    <div class="crypto-header">
+                        <div class="crypto-info">
+                            <h2>${data.name}</h2>
+                            <span class="crypto-symbol">${data.symbol}</span>
+                            <div class="crypto-rank">시가총액: ${marketCapDisplay}</div>
+                        </div>
+                        <div class="crypto-price-section">
+                            <div class="crypto-price">${data.price}</div>
+                            <div class="price-change ${changeClass}">
+                                ${changeIcon} ${data.change}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="crypto-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">거래량</div>
+                            <div class="stat-value">${volumeDisplay}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">PER</div>
+                            <div class="stat-value">${data.pe_ratio || '-'}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">EPS</div>
+                            <div class="stat-value">${data.eps || '-'}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">52주 최고</div>
+                            <div class="stat-value">${formatPrice52w(data.high_52w, data.name)}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">52주 최저</div>
+                            <div class="stat-value">${formatPrice52w(data.low_52w, data.name)}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">투자등급</div>
+                            <div class="stat-value">분석중</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 암호화폐 데이터 표시
+        function displayCryptoData(data) {
+            const changeClass = data.change_value > 0 ? 'price-up' : 'price-down';
+            const changeIcon = data.change_value > 0 ? '▲' : '▼';
+
+            document.getElementById('resultsSection').innerHTML = `
+                <div class="crypto-card">
+                    <div class="crypto-header">
+                        <div class="crypto-info">
+                            <h2>${data.name}</h2>
+                            <span class="crypto-symbol">${data.symbol.toUpperCase()}</span>
+                            <div class="crypto-rank">시가총액 순위 #${data.market_cap_rank}</div>
+                        </div>
+                        <div class="crypto-price-section">
+                            <div class="crypto-price">${data.price}</div>
+                            <div class="price-change ${changeClass}">
+                                ${changeIcon} ${data.change}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="crypto-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">24시간 거래량</div>
+                            <div class="stat-value">₩${(data.volume_24h / 1000000000).toFixed(1)}억</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">24시간 최고가</div>
+                            <div class="stat-value">₩${data.high_24h.toLocaleString()}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">24시간 최저가</div>
+                            <div class="stat-value">₩${data.low_24h.toLocaleString()}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">RSI</div>
+                            <div class="stat-value">${data.technical_signals?.rsi?.toFixed(1) || '-'}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">매매 신호</div>
+                            <div class="stat-value">${data.technical_signals?.signal || '중립'}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">감성 분석</div>
+                            <div class="stat-value">${data.sentiment_label}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 에러 표시
+        function displayError(message) {
+            document.getElementById('resultsSection').innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px;"></i>
+                    <h3>오류가 발생했습니다</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // 빠른 검색
+        function quickSearch(crypto) {
+            document.getElementById('searchInput').value = crypto;
+            analyzeQuery();
+        }
+
+        // 검색 히스토리 추가
+        function addToHistory(query) {
+            if (!searchHistory.includes(query)) {
+                searchHistory.unshift(query);
+                if (searchHistory.length > 10) {
+                    searchHistory.pop();
+                }
+                updateHistoryDisplay();
+            }
+        }
+
+        // 검색 히스토리 표시 업데이트
+        function updateHistoryDisplay() {
+            if (searchHistory.length > 0) {
+                document.getElementById('historySection').style.display = 'block';
+                document.getElementById('historyItems').innerHTML = searchHistory
+                    .map(item => `<div class="history-item" onclick="quickSearch('${item}')">${item}</div>`)
+                    .join('');
+            }
+        }
+
+        // Enter 키 처리
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzeQuery();
+            }
+        });
+
+        // 페이지 로드 시 포커스
+        window.addEventListener('load', () => {
+            document.getElementById('searchInput').focus();
+        });
+    </script>
+</body>
+</html>

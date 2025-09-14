@@ -324,10 +324,14 @@ class CryptoAgent:
         Args:
             crypto_name: 암호화폐명
         """
+        print(f"[CRYPTO] Starting analyze_crypto for: {crypto_name}")
+        
         # 기본 데이터 조회
         crypto_result = await self.get_crypto_data(crypto_name)
+        print(f"[CRYPTO] Got crypto_result status: {crypto_result.get('status', 'unknown')}")
         
         if crypto_result["status"] != "success":
+            print(f"[CRYPTO] Error in get_crypto_data: {crypto_result}")
             return crypto_result
             
         crypto_data = crypto_result["crypto_data"]
@@ -362,9 +366,9 @@ class CryptoAgent:
     
     def _calculate_crypto_signals(self, crypto_data: Dict[str, Any]) -> Dict[str, Any]:
         """암호화폐 기술적 신호 계산"""
-        current_price = crypto_data.get("current_price", 0)
-        high_24h = crypto_data.get("high_24h", current_price)
-        low_24h = crypto_data.get("low_24h", current_price)
+        current_price = crypto_data.get("current_price_usd", 0)
+        high_24h = crypto_data.get("high_24h_usd", current_price)
+        low_24h = crypto_data.get("low_24h_usd", current_price)
         change_24h = crypto_data.get("price_change_percentage_24h", 0)
         change_7d = crypto_data.get("price_change_percentage_7d", 0)
         
@@ -401,7 +405,7 @@ class CryptoAgent:
     def _generate_crypto_analysis(self, crypto_data: Dict[str, Any], sentiment: Dict[str, Any], technical: Dict[str, Any]) -> str:
         """암호화폐 종합 분석 텍스트 생성"""
         name = crypto_data.get("name", "")
-        current_price = crypto_data.get("current_price", 0)
+        current_price = crypto_data.get("current_price_usd", 0)
         change_24h = crypto_data.get("price_change_percentage_24h", 0)
         change_7d = crypto_data.get("price_change_percentage_7d", 0)
         market_cap_rank = crypto_data.get("market_cap_rank", 0)
