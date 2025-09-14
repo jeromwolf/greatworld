@@ -61,6 +61,16 @@ class SimpleNLUAgent:
                 r"news",
                 r"announcement",
                 r"최근.*소식"
+            ],
+            "analyze_crypto": [
+                r"코인",
+                r"암호화폐",
+                r"비트코인",
+                r"이더리움",
+                r"crypto",
+                r"cryptocurrency",
+                r"bitcoin",
+                r"ethereum"
             ]
         }
     
@@ -126,8 +136,8 @@ class SimpleNLUAgent:
             "stop_words": self._build_stop_words_pattern(),
             # 인덱스 및 ETF (새로 추가)
             "index_etf": r"\b(SPY|QQQ|IWM|VTI|VOO|VEA|VWO|GLD|SLV|TLT|BTC|ETH|ARKK|SOXL|TQQQ|SPXL)\b",
-            # 암호화폐 관련
-            "crypto": r"\b(Bitcoin|BTC|비트코인|Ethereum|ETH|이더리움|Dogecoin|DOGE|도지코인)\b"
+            # 암호화폐 관련 (대폭 확장)
+            "crypto": r"(Bitcoin|BTC|비트코인|Ethereum|ETH|이더리움|Dogecoin|DOGE|도지코인|Ripple|XRP|리플|Cardano|ADA|에이다|Polkadot|DOT|Chainlink|LINK|체인링크|Litecoin|LTC|라이트코인|Solana|SOL|솔라나|Binance.*Coin|BNB|바이낸스|Polygon|MATIC|폴리곤|Avalanche|AVAX|아발란체)"
         }
         
     def _build_ticker_pattern(self) -> str:

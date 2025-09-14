@@ -31,6 +31,7 @@ from agents.sentiment_agent import SentimentAgent
 from agents.price_agent import PriceAgent
 from agents.financial_agent import FinancialAgent
 from agents.technical_agent import TechnicalAgent
+from agents.crypto_agent import CryptoAgent
 from api.professional_report_formatter import ProfessionalReportFormatter
 from config.period_config import PeriodConfig
 
@@ -198,7 +199,79 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             )
             
             # 분석 실행
-            if nlu_result["intent"] == "analyze_stock" and nlu_result["entities"].get("stocks"):
+            if nlu_result["intent"] == "analyze_crypto" and nlu_result["entities"].get("crypto"):
+                print(f"[WEBSOCKET] Starting crypto analysis...", flush=True)
+                # 암호화폐 정보 추출
+                crypto = nlu_result["entities"]["crypto"][0]
+                print(f"[WEBSOCKET] Crypto extracted: {crypto}", flush=True)
+                
+                try:
+                    # 암호화폐 분석 실행
+                    async with CryptoAgent() as crypto_agent:
+                        crypto_result = await crypto_agent.analyze_crypto(crypto)
+                    
+                    if crypto_result["status"] == "success":
+                        # 암호화폐 데이터 대시보드 형식으로 변환
+                        crypto_data = crypto_result["crypto_data"]
+                        current_price = crypto_data.get("current_price", 0)
+                        change_24h = crypto_data.get("price_change_percentage_24h", 0)
+                        
+                        # 가격 포맷팅
+                        if current_price >= 1:
+                            price_str = f"${current_price:,.2f}"
+                        else:
+                            price_str = f"${current_price:.6f}"
+                        
+                        # 변동률 포맷팅  
+                        change_str = f"{'+' if change_24h > 0 else ''}{change_24h:.2f}%"
+                        
+                        dashboard_data = {
+                            "type": "crypto",
+                            "crypto_name": crypto,
+                            "name": crypto_data.get("name", crypto),
+                            "symbol": crypto_data.get("symbol", ""),
+                            "price": price_str,
+                            "change": change_str,
+                            "change_value": change_24h,
+                            "market_cap": crypto_data.get("market_cap", 0),
+                            "market_cap_rank": crypto_data.get("market_cap_rank", 0),
+                            "volume_24h": crypto_data.get("volume_24h", 0),
+                            "high_24h": crypto_data.get("high_24h", 0),
+                            "low_24h": crypto_data.get("low_24h", 0),
+                            "ath": crypto_data.get("ath", 0),
+                            "atl": crypto_data.get("atl", 0),
+                            "sentiment": crypto_result.get("sentiment", {}).get("overall_sentiment", 0),
+                            "sentiment_label": crypto_result.get("sentiment", {}).get("sentiment_label", "중립적"),
+                            "technical_signals": crypto_result.get("technical_signals", {}),
+                            "analysis": crypto_result.get("analysis", ""),
+                            "data_source": crypto_result.get("data_source", "UNKNOWN")
+                        }
+                        
+                        # 암호화폐 분석 결과 전송
+                        await manager.send_personal_message(
+                            json.dumps(dashboard_data, ensure_ascii=False),
+                            websocket
+                        )
+                    else:
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "error",
+                                "message": f"암호화폐 '{crypto}' 분석 실패: {crypto_result.get('message', '알 수 없는 오류')}"
+                            }, ensure_ascii=False),
+                            websocket
+                        )
+                        
+                except Exception as e:
+                    print(f"[WEBSOCKET] Crypto analysis error: {e}", flush=True)
+                    await manager.send_personal_message(
+                        json.dumps({
+                            "type": "error",
+                            "message": f"암호화폐 분석 중 오류가 발생했습니다: {str(e)}"
+                        }, ensure_ascii=False),
+                        websocket
+                    )
+                    
+            elif nlu_result["intent"] == "analyze_stock" and nlu_result["entities"].get("stocks"):
                 print(f"[WEBSOCKET] Starting stock analysis...", flush=True)
                 # 종목 정보 추출
                 stock = nlu_result["entities"]["stocks"][0]
