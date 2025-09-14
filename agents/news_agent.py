@@ -85,8 +85,9 @@ class NewsAgent:
             page_size: 페이지당 결과 수
         """
         if not self.newsapi_key:
-            # API 키가 없으면 모의 데이터 반환
-            return await self._get_mock_news(query)
+            # API 키가 없으면 RSS 기반 실제 뉴스 사용
+            print(f"[NEWS] Using RSS news for: {query}", flush=True)
+            return await self._get_rss_news(query, language)
             
         # 날짜 기본값 설정 - 최적화된 기간 사용
         if not to_date:
@@ -358,6 +359,82 @@ class NewsAgent:
             "articles": mock_articles,
             "data_source": "MOCK_DATA"
         }
+    
+    async def _get_rss_news(self, query: str, language: str = "ko") -> Dict[str, Any]:
+        """RSS를 통한 실제 뉴스 수집"""
+        try:
+            import feedparser
+            from urllib.parse import quote
+            
+            print(f"[RSS NEWS] Fetching news for: {query}, language: {language}", flush=True)
+            
+            if language == "ko" or any(ord(char) > 127 for char in query):
+                # 한국 뉴스 - 구글 뉴스
+                search_query = quote(f"{query} 주식")
+                rss_url = f"https://news.google.com/rss/search?q={search_query}&hl=ko&gl=KR&ceid=KR:ko"
+            else:
+                # 영어 뉴스 - 구글 뉴스
+                search_query = quote(f"{query} stock")
+                rss_url = f"https://news.google.com/rss/search?q={search_query}&hl=en&gl=US&ceid=US:en"
+            
+            print(f"[RSS NEWS] Fetching from URL: {rss_url}", flush=True)
+            
+            # RSS 파싱
+            feed = feedparser.parse(rss_url)
+            
+            articles = []
+            for entry in feed.entries[:10]:  # 최대 10개
+                try:
+                    # 발행일 파싱
+                    pub_date = entry.published if hasattr(entry, 'published') else datetime.now().isoformat()
+                    
+                    # 기사 정보 추출
+                    title = entry.title if hasattr(entry, 'title') else "제목 없음"
+                    description = entry.summary if hasattr(entry, 'summary') else title
+                    link = entry.link if hasattr(entry, 'link') else ""
+                    
+                    # 소스 추출
+                    source = "Google News"
+                    if hasattr(entry, 'source') and hasattr(entry.source, 'title'):
+                        source = entry.source.title
+                    
+                    articles.append({
+                        "title": title,
+                        "description": description,
+                        "url": link,
+                        "source": source,
+                        "publishedAt": pub_date,
+                        "sentiment": None,
+                        "key_info": None
+                    })
+                    
+                except Exception as article_error:
+                    print(f"[RSS NEWS] Error parsing article: {article_error}", flush=True)
+                    continue
+                    
+            print(f"[RSS NEWS] Found {len(articles)} articles", flush=True)
+            
+            if articles:
+                return {
+                    "status": "success",
+                    "message": f"RSS에서 {len(articles)}개 뉴스 수집 완료",
+                    "total_results": len(articles),
+                    "articles": articles,
+                    "data_source": "REAL_DATA"
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "RSS에서 뉴스를 찾을 수 없습니다",
+                    "total_results": 0,
+                    "articles": [],
+                    "data_source": "REAL_DATA"
+                }
+                
+        except Exception as e:
+            print(f"[RSS NEWS] Error: {e}", flush=True)
+            # RSS 실패 시 모의 데이터 반환
+            return await self._get_mock_news(query)
         
     def calculate_news_sentiment_score(self, articles: List[Dict]) -> float:
         """

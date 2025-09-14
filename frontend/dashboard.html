@@ -1045,23 +1045,23 @@
                                     </div>
                                     <div class="metric-row">
                                         <span>24시간 거래량</span>
-                                        <span style="font-weight: 600;">${data.volume_24h ? '$' + (data.volume_24h / 1000000).toFixed(0) + 'M' : '-'}</span>
+                                        <span style="font-weight: 600;">${data.volume_24h ? '₩' + (data.volume_24h / 1000000000).toFixed(0) + '억' : '-'}</span>
                                     </div>
                                     <div class="metric-row">
                                         <span>24시간 최고</span>
-                                        <span style="font-weight: 600;">${data.high_24h ? '$' + data.high_24h.toFixed(2) : '-'}</span>
+                                        <span style="font-weight: 600;">${data.high_24h ? (data.high_24h > 1000 ? '₩' + data.high_24h.toLocaleString() : '₩' + data.high_24h.toFixed(2)) : '-'}</span>
                                     </div>
                                     <div class="metric-row">
                                         <span>24시간 최저</span>
-                                        <span style="font-weight: 600;">${data.low_24h ? '$' + data.low_24h.toFixed(2) : '-'}</span>
+                                        <span style="font-weight: 600;">${data.low_24h ? (data.low_24h > 1000 ? '₩' + data.low_24h.toLocaleString() : '₩' + data.low_24h.toFixed(2)) : '-'}</span>
                                     </div>
                                     <div class="metric-row">
                                         <span>역대 최고 (ATH)</span>
-                                        <span style="font-weight: 600;">${data.ath ? '$' + data.ath.toFixed(2) : '-'}</span>
+                                        <span style="font-weight: 600;">${data.ath ? (data.ath > 1000 ? '₩' + data.ath.toLocaleString() : '₩' + data.ath.toFixed(2)) : '-'}</span>
                                     </div>
                                     <div class="metric-row">
                                         <span>역대 최저 (ATL)</span>
-                                        <span style="font-weight: 600;">${data.atl ? '$' + data.atl.toFixed(6) : '-'}</span>
+                                        <span style="font-weight: 600;">${data.atl ? (data.atl > 1 ? '₩' + data.atl.toFixed(2) : '₩' + data.atl.toFixed(4)) : '-'}</span>
                                     </div>
                                 ` : `
                                     <!-- 주식 지표 -->

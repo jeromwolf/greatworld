@@ -17,22 +17,30 @@ class CryptoData:
     """암호화폐 데이터 모델"""
     symbol: str
     name: str
-    current_price: float
-    market_cap: float
+    current_price_usd: float
+    current_price_krw: float
+    market_cap_usd: float
+    market_cap_krw: float
     market_cap_rank: int
-    price_change_24h: float
+    price_change_24h_usd: float
+    price_change_24h_krw: float
     price_change_percentage_24h: float
     price_change_percentage_7d: float
     price_change_percentage_30d: float
     circulating_supply: float
     total_supply: float
     max_supply: float
-    volume_24h: float
-    high_24h: float
-    low_24h: float
-    ath: float  # All Time High
+    volume_24h_usd: float
+    volume_24h_krw: float
+    high_24h_usd: float
+    high_24h_krw: float
+    low_24h_usd: float
+    low_24h_krw: float
+    ath_usd: float
+    ath_krw: float
     ath_date: str
-    atl: float  # All Time Low
+    atl_usd: float
+    atl_krw: float
     atl_date: str
     last_updated: str
 
@@ -123,6 +131,7 @@ class CryptoAgent:
         """
         try:
             coin_id = self.normalize_crypto_name(crypto_name)
+            print(f"[CRYPTO] Fetching data for {crypto_name} (coin_id: {coin_id})", flush=True)
             
             # CoinGecko API 호출
             url = f"{self.coingecko_url}/coins/{coin_id}"
@@ -134,12 +143,17 @@ class CryptoAgent:
                 "developer_data": "false"
             }
             
+            print(f"[CRYPTO] API URL: {url}", flush=True)
             async with self.session.get(url, params=params) as response:
+                print(f"[CRYPTO] Response status: {response.status}", flush=True)
                 if response.status == 200:
                     data = await response.json()
+                    print(f"[CRYPTO] Data received successfully", flush=True)
                     return self._parse_crypto_data(data, crypto_name)
                 else:
                     # API 실패 시 모의 데이터 반환
+                    text = await response.text()
+                    print(f"[CRYPTO] API failed with status {response.status}: {text[:200]}", flush=True)
                     return await self._get_mock_crypto_data(crypto_name)
                     
         except Exception as e:
@@ -147,28 +161,36 @@ class CryptoAgent:
             return await self._get_mock_crypto_data(crypto_name)
     
     def _parse_crypto_data(self, data: dict, original_name: str) -> Dict[str, Any]:
-        """CoinGecko API 응답 파싱"""
+        """CoinGecko API 응답 파싱 - USD와 KRW 모두 파싱"""
         market_data = data.get("market_data", {})
         
         crypto_info = CryptoData(
             symbol=data.get("symbol", "").upper(),
             name=data.get("name", original_name),
-            current_price=market_data.get("current_price", {}).get("usd", 0),
-            market_cap=market_data.get("market_cap", {}).get("usd", 0),
+            current_price_usd=market_data.get("current_price", {}).get("usd", 0),
+            current_price_krw=market_data.get("current_price", {}).get("krw", 0),
+            market_cap_usd=market_data.get("market_cap", {}).get("usd", 0),
+            market_cap_krw=market_data.get("market_cap", {}).get("krw", 0),
             market_cap_rank=market_data.get("market_cap_rank", 0),
-            price_change_24h=market_data.get("price_change_24h", 0),
+            price_change_24h_usd=market_data.get("price_change_24h", 0),
+            price_change_24h_krw=market_data.get("price_change_24h_in_currency", {}).get("krw", 0),
             price_change_percentage_24h=market_data.get("price_change_percentage_24h", 0),
             price_change_percentage_7d=market_data.get("price_change_percentage_7d", 0),
             price_change_percentage_30d=market_data.get("price_change_percentage_30d", 0),
             circulating_supply=market_data.get("circulating_supply", 0),
             total_supply=market_data.get("total_supply", 0),
             max_supply=market_data.get("max_supply", 0),
-            volume_24h=market_data.get("total_volume", {}).get("usd", 0),
-            high_24h=market_data.get("high_24h", {}).get("usd", 0),
-            low_24h=market_data.get("low_24h", {}).get("usd", 0),
-            ath=market_data.get("ath", {}).get("usd", 0),
+            volume_24h_usd=market_data.get("total_volume", {}).get("usd", 0),
+            volume_24h_krw=market_data.get("total_volume", {}).get("krw", 0),
+            high_24h_usd=market_data.get("high_24h", {}).get("usd", 0),
+            high_24h_krw=market_data.get("high_24h", {}).get("krw", 0),
+            low_24h_usd=market_data.get("low_24h", {}).get("usd", 0),
+            low_24h_krw=market_data.get("low_24h", {}).get("krw", 0),
+            ath_usd=market_data.get("ath", {}).get("usd", 0),
+            ath_krw=market_data.get("ath", {}).get("krw", 0),
             ath_date=market_data.get("ath_date", {}).get("usd", ""),
-            atl=market_data.get("atl", {}).get("usd", 0),
+            atl_usd=market_data.get("atl", {}).get("usd", 0),
+            atl_krw=market_data.get("atl", {}).get("krw", 0),
             atl_date=market_data.get("atl_date", {}).get("usd", ""),
             last_updated=market_data.get("last_updated", datetime.now().isoformat())
         )
@@ -201,25 +223,36 @@ class CryptoAgent:
         coin_id = self.normalize_crypto_name(crypto_name)
         base_price = base_prices.get(coin_id, 1.0)
         
+        # 대략적인 USD-KRW 환율 (1400원)
+        usd_to_krw = 1400
+        
         mock_crypto = CryptoData(
             symbol=coin_id.upper()[:4] if coin_id else "UNKN",
             name=crypto_name,
-            current_price=base_price,
-            market_cap=base_price * 19000000,  # 대략적인 시가총액
+            current_price_usd=base_price,
+            current_price_krw=base_price * usd_to_krw,
+            market_cap_usd=base_price * 19000000,
+            market_cap_krw=base_price * 19000000 * usd_to_krw,
             market_cap_rank=1,
-            price_change_24h=base_price * 0.02,  # 2% 변동
+            price_change_24h_usd=base_price * 0.02,
+            price_change_24h_krw=base_price * 0.02 * usd_to_krw,
             price_change_percentage_24h=2.1,
             price_change_percentage_7d=5.3,
             price_change_percentage_30d=-1.2,
             circulating_supply=19000000,
             total_supply=21000000,
             max_supply=21000000,
-            volume_24h=base_price * 500000,
-            high_24h=base_price * 1.05,
-            low_24h=base_price * 0.95,
-            ath=base_price * 3,  # 역대 최고가
+            volume_24h_usd=base_price * 500000,
+            volume_24h_krw=base_price * 500000 * usd_to_krw,
+            high_24h_usd=base_price * 1.05,
+            high_24h_krw=base_price * 1.05 * usd_to_krw,
+            low_24h_usd=base_price * 0.95,
+            low_24h_krw=base_price * 0.95 * usd_to_krw,
+            ath_usd=base_price * 3,
+            ath_krw=base_price * 3 * usd_to_krw,
             ath_date="2021-11-10T00:00:00.000Z",
-            atl=base_price * 0.1,  # 역대 최저가
+            atl_usd=base_price * 0.1,
+            atl_krw=base_price * 0.1 * usd_to_krw,
             atl_date="2020-03-20T00:00:00.000Z",
             last_updated=datetime.now().isoformat()
         )

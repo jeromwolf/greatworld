@@ -213,14 +213,24 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     if crypto_result["status"] == "success":
                         # 암호화폐 데이터 대시보드 형식으로 변환
                         crypto_data = crypto_result["crypto_data"]
-                        current_price = crypto_data.get("current_price", 0)
+                        current_price_usd = crypto_data.get("current_price_usd", 0)
+                        current_price_krw = crypto_data.get("current_price_krw", 0)
                         change_24h = crypto_data.get("price_change_percentage_24h", 0)
                         
-                        # 가격 포맷팅
-                        if current_price >= 1:
-                            price_str = f"${current_price:,.2f}"
+                        # 가격 포맷팅 - 원화 우선, USD 병기
+                        if current_price_krw > 1000:
+                            krw_str = f"₩{current_price_krw:,.0f}"
+                        elif current_price_krw > 1:
+                            krw_str = f"₩{current_price_krw:,.2f}"
                         else:
-                            price_str = f"${current_price:.6f}"
+                            krw_str = f"₩{current_price_krw:.4f}"
+                            
+                        if current_price_usd >= 1:
+                            usd_str = f"${current_price_usd:,.2f}"
+                        else:
+                            usd_str = f"${current_price_usd:.6f}"
+                            
+                        price_str = f"{krw_str} ({usd_str})"
                         
                         # 변동률 포맷팅  
                         change_str = f"{'+' if change_24h > 0 else ''}{change_24h:.2f}%"
@@ -233,13 +243,19 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             "price": price_str,
                             "change": change_str,
                             "change_value": change_24h,
-                            "market_cap": crypto_data.get("market_cap", 0),
+                            "market_cap": crypto_data.get("market_cap_krw", 0),
+                            "market_cap_usd": crypto_data.get("market_cap_usd", 0),
                             "market_cap_rank": crypto_data.get("market_cap_rank", 0),
-                            "volume_24h": crypto_data.get("volume_24h", 0),
-                            "high_24h": crypto_data.get("high_24h", 0),
-                            "low_24h": crypto_data.get("low_24h", 0),
-                            "ath": crypto_data.get("ath", 0),
-                            "atl": crypto_data.get("atl", 0),
+                            "volume_24h": crypto_data.get("volume_24h_krw", 0),
+                            "volume_24h_usd": crypto_data.get("volume_24h_usd", 0),
+                            "high_24h": crypto_data.get("high_24h_krw", 0),
+                            "high_24h_usd": crypto_data.get("high_24h_usd", 0),
+                            "low_24h": crypto_data.get("low_24h_krw", 0),
+                            "low_24h_usd": crypto_data.get("low_24h_usd", 0),
+                            "ath": crypto_data.get("ath_krw", 0),
+                            "ath_usd": crypto_data.get("ath_usd", 0),
+                            "atl": crypto_data.get("atl_krw", 0),
+                            "atl_usd": crypto_data.get("atl_usd", 0),
                             "sentiment": crypto_result.get("sentiment", {}).get("overall_sentiment", 0),
                             "sentiment_label": crypto_result.get("sentiment", {}).get("sentiment_label", "중립적"),
                             "technical_signals": crypto_result.get("technical_signals", {}),
